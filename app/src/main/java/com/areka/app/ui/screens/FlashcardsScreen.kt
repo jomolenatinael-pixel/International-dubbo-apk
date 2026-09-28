@@ -423,26 +423,38 @@ fun InteractiveFlashcardDeck(
     var cardsReviewedInSession by remember(unit.id) { mutableIntStateOf(0) }
     var initialQueueTotal by remember(unit.id) { mutableIntStateOf(0) }
 
-    // Build study queue when schedules become available
+    // Build study queue when schedules become available - due cards first
     LaunchedEffect(schedules, unit.id) {
         if (!isQueueInitialized && schedules.isNotEmpty()) {
             val now = System.currentTimeMillis()
-            val dueLearning = cards.filter { card ->
+            // 1. Due cards first: cards whose schedule dueAtEpochMillis <= now, sorted by earliest due
+            val dueCards = cards.filter { card ->
                 val s = schedulesMap[card.id]
-                s != null && (s.status == CardStatus.LEARNING.name || s.status == CardStatus.RELEARNING.name) && s.dueAtEpochMillis <= now
-            }.map { it.id }
+                s != null && s.status != CardStatus.NEW.name && s.dueAtEpochMillis <= now
+            }.sortedBy { schedulesMap[it.id]?.dueAtEpochMillis ?: Long.MAX_VALUE }
+             .map { it.id }
 
-            val dueReview = cards.filter { card ->
-                val s = schedulesMap[card.id]
-                s != null && s.status == CardStatus.REVIEW.name && s.dueAtEpochMillis <= now
-            }.map { it.id }
-
+            // 2. New cards
             val newCards = cards.filter { card ->
                 val s = schedulesMap[card.id]
                 s == null || s.status == CardStatus.NEW.name
-            }.take(10).map { it.id }
+            }.map { it.id }
 
-            val built = dueLearning + dueReview + newCards
+            // 3. Fallback: future scheduled cards if neither due nor new remain
+            val futureCards = cards.filter { card ->
+                val s = schedulesMap[card.id]
+                s != null && s.status != CardStatus.NEW.name && s.dueAtEpochMillis > now
+            }.sortedBy { schedulesMap[it.id]?.dueAtEpochMillis ?: Long.MAX_VALUE }
+             .map { it.id }
+
+            val built = if (dueCards.isNotEmpty()) {
+                dueCards + newCards.filter { it !in dueCards }
+            } else if (newCards.isNotEmpty()) {
+                newCards
+            } else {
+                futureCards.ifEmpty { cards.map { it.id } }
+            }
+
             activeQueue = built
             initialQueueTotal = built.size
             isQueueInitialized = true

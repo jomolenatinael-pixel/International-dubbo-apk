@@ -40,4 +40,10 @@ interface StudyDao {
 
     @Query("SELECT * FROM mistakes WHERE unitId = :unitId AND reviewedAtEpochMillis IS NULL ORDER BY createdAtEpochMillis DESC")
     fun getOpenMistakesForUnit(unitId: String): Flow<List<MistakeEntity>>
+
+    @Query("UPDATE mistakes SET reviewedAtEpochMillis = :reviewedAt WHERE quizId = :quizId AND questionId = :questionId")
+    suspend fun markMistakeReviewed(quizId: String, questionId: Int, reviewedAt: Long = System.currentTimeMillis())
+
+    @Query("UPDATE mistakes SET reviewedAtEpochMillis = :reviewedAt WHERE reviewedAtEpochMillis IS NULL")
+    suspend fun markAllMistakesReviewed(reviewedAt: Long = System.currentTimeMillis())
 }

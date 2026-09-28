@@ -31,6 +31,12 @@ object StudyRepository {
     private val _isDarkTheme = MutableStateFlow(true)
     val isDarkTheme: StateFlow<Boolean> = _isDarkTheme.asStateFlow()
 
+    private val _dueFlashcardsCount = MutableStateFlow(0)
+    val dueFlashcardsCount: StateFlow<Int> = _dueFlashcardsCount.asStateFlow()
+
+    private val _openMistakes = MutableStateFlow<List<MistakeEntity>>(emptyList())
+    val openMistakes: StateFlow<List<MistakeEntity>> = _openMistakes.asStateFlow()
+
     private val _userProfile = MutableStateFlow(
         UserProfile(
             name = "Student",
@@ -57,6 +63,29 @@ object StudyRepository {
                 db.userProfileDao().insertOrUpdate(UserProfileEntity.default())
             }
 
+            // Seed flashcard schedules if empty
+            val scheduleCount = db.flashcardScheduleDao().getScheduleCount()
+            if (scheduleCount == 0) {
+                val now = System.currentTimeMillis()
+                val initialSchedules = CurriculumData.flashcards.map { card ->
+                    FlashcardScheduleEntity(
+                        cardId = card.id,
+                        subjectId = card.subjectId,
+                        unitId = card.unitId,
+                        status = CardStatus.NEW.name,
+                        dueAtEpochMillis = now,
+                        intervalDays = 0f,
+                        ease = 2.5f,
+                        repetitions = 0,
+                        lapses = 0,
+                        learningStepIndex = 0,
+                        lastReviewedAtEpochMillis = null,
+                        updatedAtEpochMillis = now
+                    )
+                }
+                db.flashcardScheduleDao().insertAll(initialSchedules)
+            }
+
             // Observe UserProfile changes
             launch {
                 db.userProfileDao().getUserProfile().collectLatest { entity ->
@@ -73,16 +102,34 @@ object StudyRepository {
                     _recentActivities.value = entities.map { it.toRecentActivity() }
                 }
             }
+
+            // Observe flashcard schedules for due count
+            launch {
+                db.flashcardScheduleDao().getAllSchedules().collectLatest { schedules ->
+                    val now = System.currentTimeMillis()
+                    _dueFlashcardsCount.value = schedules.count { it.dueAtEpochMillis <= now }
+                }
+            }
+
+            // Observe open mistakes
+            launch {
+                db.studyDao().getOpenMistakes().collectLatest { mistakes ->
+                    _openMistakes.value = mistakes
+                }
+            }
         }
     }
 
-    val streakBadges = listOf(
-        DailyStreakBadge(7, "7 Days Star", 0xFF00D2FF, true),
-        DailyStreakBadge(14, "14 Days Shield", 0xFFF59E0B, true),
-        DailyStreakBadge(30, "30 Days Ribbon", 0xFF8B5CF6, true),
-        DailyStreakBadge(60, "Master Badge", 0xFF10B981, false),
-        DailyStreakBadge(100, "Century Crown", 0xFFEC4899, false)
+    fun getStreakBadges(streakDays: Int): List<DailyStreakBadge> = listOf(
+        DailyStreakBadge(7, "7 Days Star", 0xFF00D2FF, streakDays >= 7),
+        DailyStreakBadge(14, "14 Days Shield", 0xFFF59E0B, streakDays >= 14),
+        DailyStreakBadge(30, "30 Days Ribbon", 0xFF8B5CF6, streakDays >= 30),
+        DailyStreakBadge(60, "Master Badge", 0xFF10B981, streakDays >= 60),
+        DailyStreakBadge(100, "Century Crown", 0xFFEC4899, streakDays >= 100)
     )
+
+    val streakBadges: List<DailyStreakBadge>
+        get() = getStreakBadges(_userProfile.value.streakDays)
 
     val subjects: List<SubjectItem> = CurriculumData.subjects
     val units: List<SubjectUnit> = CurriculumData.units
@@ -417,6 +464,18 @@ object StudyRepository {
 
     fun getOpenMistakes(): Flow<List<MistakeEntity>> =
         database?.studyDao()?.getOpenMistakes() ?: flowOf(emptyList())
+
+    fun markMistakeReviewed(quizId: String, questionId: Int) {
+        repositoryScope.launch {
+            database?.studyDao()?.markMistakeReviewed(quizId, questionId)
+        }
+    }
+
+    fun markAllMistakesReviewed() {
+        repositoryScope.launch {
+            database?.studyDao()?.markAllMistakesReviewed()
+        }
+    }
 
     suspend fun getUnitProgress(unitId: String): UnitProgress {
         val db = database ?: return UnitProgress(unitId, 0, 0, 0, 0, null)

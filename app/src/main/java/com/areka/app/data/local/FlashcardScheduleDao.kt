@@ -34,4 +34,10 @@ interface FlashcardScheduleDao {
 
     @Query("SELECT * FROM flashcard_review_logs WHERE cardId = :cardId ORDER BY reviewedAtEpochMillis DESC")
     fun getReviewLogsForCard(cardId: String): Flow<List<ReviewLogEntity>>
+
+    @Query("SELECT * FROM flashcard_schedules")
+    fun getAllSchedules(): Flow<List<FlashcardScheduleEntity>>
+
+    @Query("SELECT COUNT(*) FROM flashcard_schedules")
+    suspend fun getScheduleCount(): Int
 }

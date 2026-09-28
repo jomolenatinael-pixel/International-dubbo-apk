@@ -42,7 +42,7 @@ enum class AppDestination(
 @Composable
 fun ArekaTopBar(
     title: String = "Areka",
-    streakDays: Int = 45,
+    streakDays: Int = 0,
     isDarkTheme: Boolean = true,
     onToggleDarkTheme: () -> Unit = {},
     onProfileClick: () -> Unit = {},

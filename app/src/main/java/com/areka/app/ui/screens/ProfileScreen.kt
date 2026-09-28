@@ -32,6 +32,7 @@ import com.areka.app.data.model.LeaderboardEntry
 import com.areka.app.data.model.RecentActivity
 import com.areka.app.data.model.UserProfile
 import com.areka.app.data.repository.StudyRepository
+import com.areka.app.ui.components.MistakesReviewDialog
 import com.areka.app.ui.theme.*
 
 @Composable
@@ -48,11 +49,13 @@ fun ProfileScreen(
     }
 
     var showEditDialog by remember { mutableStateOf(false) }
+    var showReviewMistakesDialog by remember { mutableStateOf(false) }
     var editNameInput by remember(userProfile.name) { mutableStateOf(userProfile.name) }
     var editGradeInput by remember(userProfile.grade) { mutableStateOf(userProfile.grade) }
 
     val achievements = StudyRepository.userAchievements
     val activities by StudyRepository.recentActivities.collectAsStateWithLifecycle()
+    val openMistakes by StudyRepository.openMistakes.collectAsStateWithLifecycle()
     val leaderboardEntries = remember(userProfile) {
         StudyRepository.getGlobalLeaderboard(userProfile)
     }
@@ -294,7 +297,7 @@ fun ProfileScreen(
                                         )
                                     )
                                     Text(
-                                        text = "${userProfile.grade} • Honors STEM Student",
+                                        text = "${userProfile.grade} • Student",
                                         style = MaterialTheme.typography.bodySmall.copy(
                                             color = primaryAccent,
                                             fontWeight = FontWeight.SemiBold
@@ -522,6 +525,67 @@ fun ProfileScreen(
                 LeaderboardRowCard(entry = entry)
             }
 
+            // Quiz Mistakes Review Entry Card
+            item(key = "mistakes_review_card") {
+                Card(
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        if (openMistakes.isNotEmpty()) CoralRed.copy(alpha = 0.5f) else MaterialTheme.colorScheme.outline
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showReviewMistakesDialog = true }
+                        .testTag("review_mistakes_profile_button")
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(42.dp)
+                                    .clip(CircleShape)
+                                    .background(if (openMistakes.isNotEmpty()) CoralRed.copy(alpha = 0.15f) else EmeraldGreen.copy(alpha = 0.15f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = if (openMistakes.isNotEmpty()) Icons.Default.WarningAmber else Icons.Default.CheckCircle,
+                                    contentDescription = null,
+                                    tint = if (openMistakes.isNotEmpty()) CoralRed else EmeraldGreen,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(14.dp))
+                            Column {
+                                Text(
+                                    text = "Quiz Mistakes",
+                                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
+                                )
+                                Text(
+                                    text = if (openMistakes.isNotEmpty()) "${openMistakes.size} questions to review" else "All caught up! No open mistakes.",
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        color = if (openMistakes.isNotEmpty()) CoralRed else EmeraldGreen,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                )
+                            }
+                        }
+
+                        Icon(
+                            imageVector = Icons.Default.ChevronRight,
+                            contentDescription = "Review mistakes",
+                            tint = MaterialTheme.colorScheme.secondaryTextColor
+                        )
+                    }
+                }
+            }
+
             // Recent Activity with animated progress bars
             item(key = "activity_section_header") {
                 Text(
@@ -628,6 +692,20 @@ fun ProfileScreen(
                 }
             }
         }
+    }
+
+    if (showReviewMistakesDialog) {
+        MistakesReviewDialog(
+            mistakes = openMistakes,
+            onDismiss = { showReviewMistakesDialog = false },
+            onMarkReviewed = { quizId, questionId ->
+                StudyRepository.markMistakeReviewed(quizId, questionId)
+            },
+            onClearAll = {
+                StudyRepository.markAllMistakesReviewed()
+                showReviewMistakesDialog = false
+            }
+        )
     }
 }
 

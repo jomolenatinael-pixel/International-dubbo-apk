@@ -51,6 +51,43 @@ class StudyLogicTest {
         assertEquals(1, StudyStreakCalculator.nextStreak(4, 100L, 103L))
     }
 
+    @Test
+    fun `flashcard scheduler updates schedule and logs on Again and Good grades`() {
+        val schedule = com.areka.app.data.local.FlashcardScheduleEntity(
+            cardId = "card_1",
+            subjectId = "bio",
+            unitId = "bio_u1",
+            status = com.areka.app.data.local.CardStatus.NEW.name
+        )
+        val now = 1_000_000L
+        val (againSchedule, againLog) = com.areka.app.data.repository.FlashcardScheduler.gradeCard(
+            schedule,
+            com.areka.app.data.local.ReviewGrade.AGAIN,
+            now
+        )
+        assertEquals(com.areka.app.data.local.CardStatus.LEARNING.name, againSchedule.status)
+        assertEquals(now + 60_000L, againSchedule.dueAtEpochMillis)
+        assertEquals("AGAIN", againLog.grade)
+
+        val (goodSchedule, goodLog) = com.areka.app.data.repository.FlashcardScheduler.gradeCard(
+            againSchedule,
+            com.areka.app.data.local.ReviewGrade.GOOD,
+            now
+        )
+        assertEquals(com.areka.app.data.local.CardStatus.LEARNING.name, goodSchedule.status)
+        assertEquals(now + 600_000L, goodSchedule.dueAtEpochMillis)
+        assertEquals("GOOD", goodLog.grade)
+    }
+
+    @Test
+    fun `new user starts at streak 0 and streak badges unlock honestly`() {
+        val badges0 = com.areka.app.data.repository.StudyRepository.getStreakBadges(0)
+        assertEquals(0, badges0.count { it.isUnlocked })
+
+        val badges14 = com.areka.app.data.repository.StudyRepository.getStreakBadges(14)
+        assertEquals(2, badges14.count { it.isUnlocked })
+    }
+
     private fun question(id: Int, correct: String) = Question(
         id = id,
         questionNumber = id,
