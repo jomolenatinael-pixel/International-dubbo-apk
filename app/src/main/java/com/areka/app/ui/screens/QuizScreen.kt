@@ -586,6 +586,8 @@ fun QuizResultsView(
     onBackToDashboard: () -> Unit,
     onOpenFlashcards: ((subjectId: String, unitId: String) -> Unit)? = null
 ) {
+    var showMistakesOnly by remember { mutableStateOf(false) }
+
     BackHandler {
         onBackToDashboard()
     }
