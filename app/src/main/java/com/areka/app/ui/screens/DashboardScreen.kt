@@ -37,8 +37,6 @@ import com.areka.app.data.repository.StudyRepository
 import com.areka.app.ui.components.GlowingBadgeItem
 import com.areka.app.ui.components.UnitSelectionDialog
 import com.areka.app.ui.theme.*
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 @Composable
 fun DashboardScreen(
@@ -50,8 +48,6 @@ fun DashboardScreen(
     modifier: Modifier = Modifier
 ) {
     var selectedSubjectForUnits by remember { mutableStateOf<SubjectItem?>(null) }
-    var isUploadingDoc by remember { mutableStateOf(false) }
-    val coroutineScope = rememberCoroutineScope()
 
     val streakBadges = StudyRepository.streakBadges
     val subjects = StudyRepository.subjects
@@ -283,142 +279,6 @@ fun DashboardScreen(
             }
         } else {
             // Standard Dashboard layout when not searching
-
-            // Upload Textbook for Quiz Card
-            item(key = "upload_card") {
-                Card(
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    border = androidx.compose.foundation.BorderStroke(
-                        1.dp,
-                        Brush.horizontalGradient(listOf(NeonCyan.copy(alpha = 0.5f), NeonPurple.copy(alpha = 0.5f)))
-                    ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag("upload_textbook_card")
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(
-                                Brush.linearGradient(
-                                    listOf(
-                                        ElectricBlue.copy(alpha = 0.12f),
-                                        NeonPurple.copy(alpha = 0.08f),
-                                        Color.Transparent
-                                    )
-                                )
-                            )
-                            .padding(18.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(48.dp)
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(NeonCyan.copy(alpha = 0.2f))
-                                    .border(1.dp, NeonCyan.copy(alpha = 0.4f), RoundedCornerShape(12.dp)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Description,
-                                    contentDescription = "Textbook Document",
-                                    tint = if (LocalThemeIsDark.current) NeonCyan else ElectricBlue,
-                                    modifier = Modifier.size(26.dp)
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.width(14.dp))
-
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = "Upload Textbook for Quiz",
-                                    style = MaterialTheme.typography.titleMedium.copy(
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onBackground
-                                    )
-                                )
-                                Text(
-                                    text = "Generate questions instantly from your syllabus",
-                                    style = MaterialTheme.typography.bodySmall.copy(
-                                        color = MaterialTheme.colorScheme.secondaryTextColor,
-                                        fontSize = 12.sp
-                                    )
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(14.dp))
-
-                        if (isUploadingDoc) {
-                            Column(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                LinearProgressIndicator(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(6.dp)
-                                        .clip(RoundedCornerShape(3.dp)),
-                                    color = NeonCyan,
-                                    trackColor = MaterialTheme.colorScheme.outline
-                                )
-                                Spacer(modifier = Modifier.height(6.dp))
-                                Text(
-                                    text = "Analyzing chapters with Gemini AI...",
-                                    style = MaterialTheme.typography.bodySmall.copy(
-                                        color = if (LocalThemeIsDark.current) NeonCyan else ElectricBlue,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
-                                )
-                            }
-                        } else {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "Supported: PDF, EPUB, Notes",
-                                    style = MaterialTheme.typography.labelSmall.copy(
-                                        color = MaterialTheme.colorScheme.secondaryTextColor
-                                    )
-                                )
-
-                                Button(
-                                    onClick = {
-                                        if (isUploadingDoc) return@Button
-                                        isUploadingDoc = true
-                                        coroutineScope.launch {
-                                            delay(1400)
-                                            isUploadingDoc = false
-                                            val newQuiz = StudyRepository.getQuizForUnit("chem_u2")
-                                            onStartQuiz(newQuiz)
-                                        }
-                                    },
-                                    enabled = !isUploadingDoc,
-                                    shape = RoundedCornerShape(12.dp),
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = ElectricBlue,
-                                        contentColor = Color.White
-                                    ),
-                                    modifier = Modifier
-                                        .heightIn(min = 44.dp)
-                                        .testTag("upload_quiz_button")
-                                ) {
-                                    Icon(Icons.Default.CloudUpload, contentDescription = null, modifier = Modifier.size(16.dp))
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text("Generate Quiz", fontWeight = FontWeight.SemiBold)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
 
             // Recent Quizzes Row (History, Biology, Chemistry)
             item(key = "recent_quizzes_section") {

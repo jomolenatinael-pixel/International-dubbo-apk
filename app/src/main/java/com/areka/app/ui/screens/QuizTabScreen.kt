@@ -36,7 +36,6 @@ fun QuizTabScreen(
     initialSubjectId: String? = null,
     initialUnitId: String? = null,
     onStartQuiz: (Quiz) -> Unit,
-    onOpenFlashcards: (subjectId: String, unitId: String) -> Unit,
     onBack: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -301,51 +300,24 @@ fun QuizTabScreen(
 
                             Spacer(modifier = Modifier.height(14.dp))
 
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            Button(
+                                onClick = {
+                                    val quiz = StudyRepository.getQuizForUnit(unit.id)
+                                    onStartQuiz(quiz)
+                                },
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = accentColor),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag("start_quiz_btn_${unit.id}")
                             ) {
-                                Button(
-                                    onClick = {
-                                        val quiz = StudyRepository.getQuizForUnit(unit.id)
-                                        onStartQuiz(quiz)
-                                    },
-                                    shape = RoundedCornerShape(12.dp),
-                                    colors = ButtonDefaults.buttonColors(containerColor = accentColor),
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .testTag("start_quiz_btn_${unit.id}")
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Quiz,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text("Take Quiz")
-                                }
-
-                                OutlinedButton(
-                                    onClick = {
-                                        onOpenFlashcards(currentSubject.id, unit.id)
-                                    },
-                                    shape = RoundedCornerShape(12.dp),
-                                    border = androidx.compose.foundation.BorderStroke(
-                                        1.dp,
-                                        MaterialTheme.colorScheme.outline
-                                    ),
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .testTag("unit_flashcards_btn_${unit.id}")
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Style,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text("Flashcards")
-                                }
+                                Icon(
+                                    imageVector = Icons.Default.Quiz,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Take Quiz")
                             }
                         }
                     }

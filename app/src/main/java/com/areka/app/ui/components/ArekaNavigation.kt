@@ -36,7 +36,6 @@ enum class AppDestination(
     DASHBOARD("Home", Icons.Filled.Home, Icons.Outlined.Home, "nav_home"),
     QUIZ("Quiz", Icons.Filled.Quiz, Icons.Outlined.Quiz, "nav_quiz"),
     FLASHCARDS("Flashcards", Icons.Filled.Style, Icons.Outlined.Style, "nav_flashcards"),
-    LEADERBOARD("Ranks", Icons.Filled.Leaderboard, Icons.Outlined.Leaderboard, "nav_leaderboard"),
     PROFILE("Profile", Icons.Filled.Person, Icons.Outlined.Person, "nav_profile")
 }
 

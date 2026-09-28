@@ -128,9 +128,6 @@ fun ArekaApp(
                                         initialSubjectId = quizSubjectId,
                                         initialUnitId = quizUnitId,
                                         onStartQuiz = { quiz -> viewModel.startQuiz(quiz) },
-                                        onOpenFlashcards = { subjectId, unitId ->
-                                            viewModel.openFlashcards(subjectId, unitId)
-                                        },
                                         onBack = { viewModel.navigateTo(AppDestination.DASHBOARD) }
                                     )
                                 }
@@ -139,11 +136,6 @@ fun ArekaApp(
                                         initialSubjectId = flashcardSubjectId,
                                         initialUnitId = flashcardUnitId,
                                         onStartQuiz = { quiz -> viewModel.startQuiz(quiz) },
-                                        onBack = { viewModel.navigateTo(AppDestination.DASHBOARD) }
-                                    )
-                                }
-                                AppDestination.LEADERBOARD -> {
-                                    LeaderboardScreen(
                                         onBack = { viewModel.navigateTo(AppDestination.DASHBOARD) }
                                     )
                                 }

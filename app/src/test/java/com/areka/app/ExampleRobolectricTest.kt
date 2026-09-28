@@ -30,9 +30,9 @@ class ExampleRobolectricTest {
     val viewModel = AppViewModel()
     assertEquals(AppDestination.DASHBOARD, viewModel.currentDestination.value)
 
-    // Navigate to leaderboard
-    viewModel.navigateTo(AppDestination.LEADERBOARD)
-    assertEquals(AppDestination.LEADERBOARD, viewModel.currentDestination.value)
+    // Navigate to profile
+    viewModel.navigateTo(AppDestination.PROFILE)
+    assertEquals(AppDestination.PROFILE, viewModel.currentDestination.value)
 
     // Back press should return to DASHBOARD
     val handled = viewModel.handleBack()

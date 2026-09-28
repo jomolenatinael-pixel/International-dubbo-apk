@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.areka.app.data.model.Achievement
+import com.areka.app.data.model.LeaderboardEntry
 import com.areka.app.data.model.RecentActivity
 import com.areka.app.data.model.UserProfile
 import com.areka.app.data.repository.StudyRepository
@@ -52,6 +53,9 @@ fun ProfileScreen(
 
     val achievements = StudyRepository.userAchievements
     val activities by StudyRepository.recentActivities.collectAsStateWithLifecycle()
+    val leaderboardEntries = remember(userProfile) {
+        StudyRepository.getGlobalLeaderboard(userProfile)
+    }
 
     if (showEditDialog) {
         AlertDialog(
@@ -482,6 +486,40 @@ fun ProfileScreen(
                         }
                     }
                 }
+            }
+
+            // Leaderboard section (Top Ranks)
+            item(key = "leaderboard_section_header") {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("profile_leaderboard_section")
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Leaderboard",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onBackground
+                            )
+                        )
+                        Text(
+                            text = "Top Ranks",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = if (LocalThemeIsDark.current) NeonCyan else ElectricBlue,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        )
+                    }
+                }
+            }
+
+            items(leaderboardEntries.take(5), key = { "profile_leaderboard_${it.id}" }) { entry ->
+                LeaderboardRowCard(entry = entry)
             }
 
             // Recent Activity with animated progress bars
