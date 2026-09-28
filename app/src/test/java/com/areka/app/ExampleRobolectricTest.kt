@@ -3,6 +3,7 @@ package com.areka.app
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import com.areka.app.data.repository.StudyRepository
+import com.areka.app.data.model.QuizScoring
 import com.areka.app.ui.components.AppDestination
 import com.areka.app.ui.viewmodel.AppViewModel
 import org.junit.Assert.assertEquals
@@ -59,21 +60,16 @@ class ExampleRobolectricTest {
   }
 
   @Test
-  fun `test quiz completion records points and activity`() {
-    val initialProfile = StudyRepository.userProfile.value
-    val initialQuizzes = initialProfile.totalQuizzes
-    val initialPoints = initialProfile.totalPoints
-
-    StudyRepository.recordQuizResult("Cell Biology Quiz", 90, 9, 10)
-
-    val updatedProfile = StudyRepository.userProfile.value
-    assertEquals(initialQuizzes + 1, updatedProfile.totalQuizzes)
-    assertEquals(initialPoints + 900, updatedProfile.totalPoints)
-
-    val latestActivity = StudyRepository.recentActivities.value.firstOrNull()
-    assertTrue(latestActivity != null)
-    assertEquals("Completed Quiz", latestActivity?.title)
-    assertTrue(latestActivity?.subtitle?.contains("Cell Biology Quiz") == true)
+  fun `quiz scoring counts correct incorrect skipped and points consistently`() {
+    val quiz = StudyRepository.getQuizForUnit("math_u1")
+    val answers = quiz.questions.take(2).associate { it.id to it.correctOptionId }
+    val score = QuizScoring.calculate(quiz, answers)
+    assertEquals(4, score.totalQuestions)
+    assertEquals(2, score.correctAnswers)
+    assertEquals(0, score.incorrectAnswers)
+    assertEquals(2, score.skippedAnswers)
+    assertEquals(50, score.percentage)
+    assertEquals(500, score.pointsEarned)
   }
 
   @Test

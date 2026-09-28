@@ -4,6 +4,8 @@ import android.content.Context
 import com.areka.app.data.local.AppDatabase
 import com.areka.app.data.local.CardStatus
 import com.areka.app.data.local.FlashcardProgressEntity
+import com.areka.app.data.local.MistakeEntity
+import com.areka.app.data.local.QuizAttemptEntity
 import com.areka.app.data.local.FlashcardScheduleEntity
 import com.areka.app.data.local.RecentActivityEntity
 import com.areka.app.data.local.ReviewGrade
@@ -33,7 +35,7 @@ object StudyRepository {
         UserProfile(
             name = "Student",
             grade = "Grade 10",
-            streakDays = 1,
+            streakDays = 0,
             totalQuizzes = 0,
             averageScore = 0,
             timeStudiedHours = 0,
@@ -90,26 +92,209 @@ object StudyRepository {
     fun getFlashcardsForUnit(unitId: String): List<Flashcard> = CurriculumData.getFlashcardsForUnit(unitId)
     fun getQuizForUnit(unitId: String): Quiz = CurriculumData.getQuizForUnit(unitId)
 
-    val allQuizzes: List<Quiz> by lazy {
-        CurriculumData.units.map { CurriculumData.getQuizForUnit(it.id) }
-    }
+    val chemistryPeriodicQuiz = Quiz(
+        id = "chem_periodic_101",
+        title = "Chemistry: Periodic Trends",
+        subject = "Chemistry",
+        durationMinutes = 15,
+        gradeLevel = "Grade 10",
+        iconName = "chemistry",
+        unitId = "chem_u5",
+        subjectId = "chemistry",
+        questions = listOf(
+            Question(
+                id = 1,
+                questionNumber = 1,
+                totalQuestions = 5,
+                text = "Which element has the highest electronegativity?",
+                options = listOf(
+                    QuestionOption("F", "Fluorine (F)"),
+                    QuestionOption("O", "Oxygen (O)"),
+                    QuestionOption("Cl", "Chlorine (Cl)"),
+                    QuestionOption("N", "Nitrogen (N)")
+                ),
+                correctOptionId = "F",
+                explanation = "Fluorine has the highest electronegativity value (3.98 Pauling) due to its high nuclear charge relative to its small atomic radius."
+            ),
+            Question(
+                id = 2,
+                questionNumber = 2,
+                totalQuestions = 5,
+                text = "What is the general trend for atomic radius across a period from left to right?",
+                options = listOf(
+                    QuestionOption("inc", "It increases steadily"),
+                    QuestionOption("dec", "It decreases steadily"),
+                    QuestionOption("same", "It remains unchanged"),
+                    QuestionOption("rand", "It fluctuates erratically")
+                ),
+                correctOptionId = "dec",
+                explanation = "Across a period, effective nuclear charge increases while electrons are added to the same energy level, pulling electrons closer to the nucleus."
+            ),
+            Question(
+                id = 3,
+                questionNumber = 3,
+                totalQuestions = 5,
+                text = "Which group in the periodic table possesses elements with the highest first ionization energies?",
+                options = listOf(
+                    QuestionOption("alk", "Alkali Metals (Group 1)"),
+                    QuestionOption("hal", "Halogens (Group 17)"),
+                    QuestionOption("nob", "Noble Gases (Group 18)"),
+                    QuestionOption("tra", "Transition Metals")
+                ),
+                correctOptionId = "nob",
+                explanation = "Noble gases have complete valence shells, creating maximum stability and requiring the greatest energy to remove an electron."
+            ),
+            Question(
+                id = 4,
+                questionNumber = 4,
+                totalQuestions = 5,
+                text = "When an atom forms a positive cation, how does its ionic radius compare to its neutral atomic radius?",
+                options = listOf(
+                    QuestionOption("larger", "The cation is always larger"),
+                    QuestionOption("smaller", "The cation is smaller than the neutral atom"),
+                    QuestionOption("equal", "The radius remains the exact same"),
+                    QuestionOption("double", "The radius doubles in size")
+                ),
+                correctOptionId = "smaller",
+                explanation = "Loss of electrons reduces electron-electron repulsion and often loses a valence shell, causing remaining electrons to be pulled closer."
+            ),
+            Question(
+                id = 5,
+                questionNumber = 5,
+                totalQuestions = 5,
+                text = "Which element among these is a metalloid located in period 3?",
+                options = listOf(
+                    QuestionOption("si", "Silicon (Si)"),
+                    QuestionOption("al", "Aluminum (Al)"),
+                    QuestionOption("p", "Phosphorus (P)"),
+                    QuestionOption("s", "Sulfur (S)")
+                ),
+                correctOptionId = "si",
+                explanation = "Silicon is a prominent metalloid (semiconductor) situated along the periodic divide in period 3, group 14."
+            )
+        )
+    )
+
+    val algebraReviewQuiz = Quiz(
+        id = "math_algebra_102",
+        title = "Algebra Review Quiz",
+        subject = "Math",
+        durationMinutes = 12,
+        gradeLevel = "Grade 10",
+        iconName = "math",
+        unitId = "math_u1",
+        subjectId = "math",
+        questions = listOf(
+            Question(
+                id = 101,
+                questionNumber = 1,
+                totalQuestions = 3,
+                text = "Solve for x in the quadratic equation: x² - 5x + 6 = 0",
+                options = listOf(
+                    QuestionOption("a", "x = 2 or x = 3"),
+                    QuestionOption("b", "x = -2 or x = -3"),
+                    QuestionOption("c", "x = 1 or x = 6"),
+                    QuestionOption("d", "x = -1 or x = 5")
+                ),
+                correctOptionId = "a",
+                explanation = "(x - 2)(x - 3) = 0 gives roots x = 2 and x = 3."
+            ),
+            Question(
+                id = 102,
+                questionNumber = 2,
+                totalQuestions = 3,
+                text = "What is the slope of the line passing through (2, 4) and (6, 12)?",
+                options = listOf(
+                    QuestionOption("a", "m = 2"),
+                    QuestionOption("b", "m = 3"),
+                    QuestionOption("c", "m = 1/2"),
+                    QuestionOption("d", "m = 4")
+                ),
+                correctOptionId = "a",
+                explanation = "Slope m = (12 - 4) / (6 - 2) = 8 / 4 = 2."
+            ),
+            Question(
+                id = 103,
+                questionNumber = 3,
+                totalQuestions = 3,
+                text = "If f(x) = 3x² - 2x + 4, what is f(2)?",
+                options = listOf(
+                    QuestionOption("a", "12"),
+                    QuestionOption("b", "10"),
+                    QuestionOption("c", "16"),
+                    QuestionOption("d", "8")
+                ),
+                correctOptionId = "a",
+                explanation = "f(2) = 3(4) - 2(2) + 4 = 12 - 4 + 4 = 12."
+            )
+        )
+    )
+
+    val biologyCellQuiz = Quiz(
+        id = "bio_cells_103",
+        title = "Cellular Respiration & Energy",
+        subject = "Biology",
+        durationMinutes = 10,
+        gradeLevel = "Grade 10",
+        iconName = "biology",
+        unitId = "bio_u4",
+        subjectId = "biology",
+        questions = listOf(
+            Question(
+                id = 201,
+                questionNumber = 1,
+                totalQuestions = 3,
+                text = "In which organelle does the majority of ATP synthesis occur via aerobic respiration?",
+                options = listOf(
+                    QuestionOption("a", "Mitochondria"),
+                    QuestionOption("b", "Ribosome"),
+                    QuestionOption("c", "Golgi Apparatus"),
+                    QuestionOption("d", "Nucleus")
+                ),
+                correctOptionId = "a",
+                explanation = "Mitochondria are the powerhouses of eukaryotic cells where the Krebs cycle and electron transport chain generate ATP."
+            ),
+            Question(
+                id = 202,
+                questionNumber = 2,
+                totalQuestions = 3,
+                text = "What is the primary product of glycolysis that enters the mitochondrial matrix?",
+                options = listOf(
+                    QuestionOption("a", "Pyruvate"),
+                    QuestionOption("b", "Glucose"),
+                    QuestionOption("c", "Lactate"),
+                    QuestionOption("d", "Ethanol")
+                ),
+                correctOptionId = "a",
+                explanation = "One 6-carbon glucose molecule is broken down into two 3-carbon pyruvate molecules during glycolysis in the cytoplasm."
+            ),
+            Question(
+                id = 203,
+                questionNumber = 3,
+                totalQuestions = 3,
+                text = "Which molecule serves as the final electron acceptor in the electron transport chain?",
+                options = listOf(
+                    QuestionOption("a", "Oxygen (O₂)"),
+                    QuestionOption("b", "Carbon Dioxide (CO₂)"),
+                    QuestionOption("c", "Water (H₂O)"),
+                    QuestionOption("d", "NAD+")
+                ),
+                correctOptionId = "a",
+                explanation = "Oxygen is the terminal electron acceptor and combines with free protons to form water."
+            )
+        )
+    )
+
+    val mathRelationsQuiz = CurriculumData.getQuizForUnit("math_u1")
+    val chemistryStoichiometryQuiz = CurriculumData.getQuizForUnit("chem_u1")
+    val biologyPlantsQuiz = CurriculumData.getQuizForUnit("bio_u2")
+
+    val allQuizzes = listOf(mathRelationsQuiz, chemistryStoichiometryQuiz, biologyPlantsQuiz)
 
     private val _recentActivities = MutableStateFlow<List<RecentActivity>>(emptyList())
     val recentActivities: StateFlow<List<RecentActivity>> = _recentActivities.asStateFlow()
 
-    private val baseGlobalLeaderboard = listOf(
-        LeaderboardEntry("u1", 1, "Alex Chen", "Grade 10", 94800, false, BadgeType.GOLD, 0xFF3B82F6),
-        LeaderboardEntry("u2", 2, "Sarah Johnson", "Grade 10", 91200, false, BadgeType.SILVER, 0xFFEC4899),
-        LeaderboardEntry("u3", 3, "Fatima Khan", "Grade 10", 88900, false, BadgeType.BRONZE, 0xFF8B5CF6),
-        LeaderboardEntry("u4", 4, "John Doe", "Grade 10", 86200, false, BadgeType.REGULAR, 0xFF10B981),
-        LeaderboardEntry("u5", 5, "John Doe Jr", "Grade 10", 84500, false, BadgeType.REGULAR, 0xFFF59E0B),
-        LeaderboardEntry("u6", 6, "Tanya Ross", "Grade 10", 83000, false, BadgeType.REGULAR, 0xFF00D2FF),
-        LeaderboardEntry("u7", 7, "Soph Ehen", "Grade 10", 81500, false, BadgeType.REGULAR, 0xFF6366F1),
-        LeaderboardEntry("u8", 8, "Marcus Wright", "Grade 10", 79200, false, BadgeType.REGULAR, 0xFF14B8A6),
-        LeaderboardEntry("u9", 9, "Emma Wilson", "Grade 10", 78100, false, BadgeType.REGULAR, 0xFFF43F5E),
-        LeaderboardEntry("u10", 10, "Liam Davis", "Grade 10", 76400, false, BadgeType.REGULAR, 0xFF84CC16),
-        LeaderboardEntry("u_user", 11, "Student", "Grade 10", 0, true, BadgeType.REGULAR, 0xFF00D2FF)
-    )
+    private val leaderboardRepository = LeaderboardRepository(MockLeaderboardDataSource())
 
     fun updateProfile(name: String, grade: String) {
         val trimmedName = name.trim().ifBlank { _userProfile.value.name }
@@ -146,66 +331,23 @@ object StudyRepository {
     val userRankSublist: List<LeaderboardEntry>
         get() = getUserRankSublist(_userProfile.value)
 
-    fun getGlobalLeaderboard(userProfile: UserProfile): List<LeaderboardEntry> {
-        val updated = baseGlobalLeaderboard.map { entry ->
-            if (entry.isCurrentUser) {
-                entry.copy(
-                    name = userProfile.name,
-                    grade = userProfile.grade,
-                    points = userProfile.totalPoints
-                )
-            } else {
-                entry
-            }
-        }.sortedByDescending { it.points }
+    fun getGlobalLeaderboard(userProfile: UserProfile): List<LeaderboardEntry> =
+        leaderboardRepository.global(userProfile)
 
-        return updated.mapIndexed { index, entry ->
-            val rank = index + 1
-            val badge = when (rank) {
-                1 -> BadgeType.GOLD
-                2 -> BadgeType.SILVER
-                3 -> BadgeType.BRONZE
-                else -> BadgeType.REGULAR
-            }
-            entry.copy(rank = rank, badgeType = badge)
-        }
-    }
+    fun getGlobalLeaderboard(userPoints: Int): List<LeaderboardEntry> =
+        getGlobalLeaderboard(_userProfile.value.copy(totalPoints = userPoints))
 
-    fun getGlobalLeaderboard(userPoints: Int): List<LeaderboardEntry> {
-        return getGlobalLeaderboard(_userProfile.value.copy(totalPoints = userPoints))
-    }
+    fun getClassALeaderboard(userProfile: UserProfile): List<LeaderboardEntry> =
+        leaderboardRepository.classA(userProfile)
 
-    fun getClassALeaderboard(userProfile: UserProfile): List<LeaderboardEntry> {
-        val baseClassA = listOf(
-            LeaderboardEntry("u2", 1, userProfile.name, "Class A", userProfile.totalPoints, true, BadgeType.GOLD, 0xFF00D2FF),
-            LeaderboardEntry("u3", 2, "Fatima Khan", "Class A", 88900, false, BadgeType.SILVER, 0xFF8B5CF6),
-            LeaderboardEntry("u4", 3, "John Doe", "Class A", 86200, false, BadgeType.BRONZE, 0xFF10B981),
-            LeaderboardEntry("u7", 4, "Soph Ehen", "Class A", 81500, false, BadgeType.REGULAR, 0xFF6366F1),
-            LeaderboardEntry("u8", 5, "Marcus Wright", "Class A", 79200, false, BadgeType.REGULAR, 0xFF14B8A6)
-        )
-        return baseClassA.sortedByDescending { it.points }.mapIndexed { index, entry ->
-            val rank = index + 1
-            val badge = when (rank) {
-                1 -> BadgeType.GOLD
-                2 -> BadgeType.SILVER
-                3 -> BadgeType.BRONZE
-                else -> BadgeType.REGULAR
-            }
-            entry.copy(rank = rank, badgeType = badge)
-        }
-    }
+    fun getClassALeaderboard(userPoints: Int): List<LeaderboardEntry> =
+        getClassALeaderboard(_userProfile.value.copy(totalPoints = userPoints))
 
-    fun getClassALeaderboard(userPoints: Int): List<LeaderboardEntry> {
-        return getClassALeaderboard(_userProfile.value.copy(totalPoints = userPoints))
-    }
+    fun getUserRankSublist(userProfile: UserProfile): List<LeaderboardEntry> =
+        leaderboardRepository.userRank(userProfile)
 
-    fun getUserRankSublist(userProfile: UserProfile): List<LeaderboardEntry> {
-        return getGlobalLeaderboard(userProfile).take(3)
-    }
-
-    fun getUserRankSublist(userPoints: Int): List<LeaderboardEntry> {
-        return getUserRankSublist(_userProfile.value.copy(totalPoints = userPoints))
-    }
+    fun getUserRankSublist(userPoints: Int): List<LeaderboardEntry> =
+        getUserRankSublist(_userProfile.value.copy(totalPoints = userPoints))
 
     val userAchievements = listOf(
         Achievement("ach1", "Quiz Master", "Complete 100+ quizzes across all STEM subjects", "trophy", true),
@@ -215,93 +357,77 @@ object StudyRepository {
         Achievement("ach5", "Streak Champion", "Maintain an unbroken daily streak of 60 days", "flame", false)
     )
 
-    fun recordQuizResult(quizTitle: String, scorePercent: Int, correct: Int, total: Int) {
-        val current = _userProfile.value
-        val todayEpochDay = try {
-            LocalDate.now().toEpochDay()
-        } catch (e: Exception) {
-            System.currentTimeMillis() / (1000 * 60 * 60 * 24)
-        }
-
-        val newTotal = current.totalQuizzes + 1
-        val newAvg = if (newTotal > 0) {
-            ((current.averageScore * current.totalQuizzes) + scorePercent) / newTotal
-        } else {
-            scorePercent
-        }
-        val pointsToAdd = scorePercent * 10
-        val updatedTotalPoints = current.totalPoints + pointsToAdd
-        val updatedRank = if (updatedTotalPoints >= 94800) 1 else 2
-        val newStudyHours = current.timeStudiedHours + (if (newTotal % 4 == 0) 1 else 0)
-
-        // Streak calculation
-        val currentStreak = current.streakDays
-        val updatedStreak = currentStreak + (if (scorePercent >= 60) 1 else 0)
-
-        val updatedProfile = current.copy(
-            totalQuizzes = newTotal,
-            averageScore = newAvg,
-            totalPoints = updatedTotalPoints,
-            globalRank = updatedRank,
-            timeStudiedHours = newStudyHours,
-            streakDays = updatedStreak
-        )
-        _userProfile.value = updatedProfile
-
-        // Prepend new activity item so dashboard and profile stay up to date
-        val iconType = when {
-            quizTitle.contains("Math", ignoreCase = true) || quizTitle.contains("Algebra", ignoreCase = true) -> "math"
-            quizTitle.contains("Bio", ignoreCase = true) -> "biology"
-            quizTitle.contains("Phys", ignoreCase = true) -> "physics"
-            else -> "chemistry"
-        }
-        val newActivity = RecentActivity(
-            id = "act_${System.currentTimeMillis()}",
+    fun recordQuizResult(
+        quiz: Quiz,
+        score: QuizScore,
+        timeSpentSeconds: Int = 0,
+        mistakes: List<MistakeEntity> = emptyList()
+    ) {
+        val now = System.currentTimeMillis()
+        val activity = RecentActivity(
+            id = "act_$now",
             title = "Completed Quiz",
-            subtitle = "$quizTitle - $scorePercent%",
-            progressPercent = scorePercent,
+            subtitle = "${quiz.title} - ${score.percentage}%",
+            progressPercent = score.percentage,
             isCompleted = true,
-            iconType = iconType
+            iconType = quiz.iconName
         )
-        val currentActivities = _recentActivities.value
-        _recentActivities.value = listOf(newActivity) + currentActivities.take(19)
+        _recentActivities.value = listOf(activity) + _recentActivities.value.take(19)
 
-        // Persist to Room SQLite database
         repositoryScope.launch {
             val db = database ?: return@launch
-            val existingEntity = db.userProfileDao().getUserProfileOnce() ?: UserProfileEntity.default()
-            val lastActive = existingEntity.lastActiveDateEpochDay
-
-            // Consecutive day logic:
-            val calculatedStreak = when {
-                lastActive == 0L -> existingEntity.streakDays + 1
-                lastActive == todayEpochDay -> existingEntity.streakDays // Already counted for today
-                lastActive == todayEpochDay - 1L -> existingEntity.streakDays + 1 // Consecutive day!
-                else -> 1 // Streak broken
-            }
-
-            val entityToSave = existingEntity.copy(
-                streakDays = calculatedStreak,
-                totalQuizzes = newTotal,
-                averageScore = newAvg,
-                totalPoints = updatedTotalPoints,
-                globalRank = updatedRank,
-                timeStudiedHours = newStudyHours,
-                lastActiveDateEpochDay = todayEpochDay
+            val existing = db.userProfileDao().getUserProfileOnce() ?: UserProfileEntity.default()
+            val attempt = QuizAttemptEntity(
+                id = "attempt_${quiz.id}_$now",
+                quizId = quiz.id,
+                quizTitle = quiz.title,
+                subjectId = quiz.subjectId ?: "",
+                unitId = quiz.unitId ?: "",
+                scorePercent = score.percentage,
+                correctAnswers = score.correctAnswers,
+                totalQuestions = score.totalQuestions,
+                timeSpentSeconds = timeSpentSeconds.coerceAtLeast(0),
+                completedAtEpochMillis = now
             )
-            db.userProfileDao().insertOrUpdate(entityToSave)
+            db.studyDao().insertAttempt(attempt)
+            if (mistakes.isNotEmpty()) db.studyDao().insertMistakes(mistakes)
 
-            val activityEntity = RecentActivityEntity(
-                id = newActivity.id,
-                title = newActivity.title,
-                subtitle = newActivity.subtitle,
-                progressPercent = newActivity.progressPercent,
-                isCompleted = newActivity.isCompleted,
-                iconType = newActivity.iconType,
-                timestamp = System.currentTimeMillis()
+            val today = try { LocalDate.now().toEpochDay() } catch (_: Exception) { now / 86_400_000L }
+            val lastActive = existing.lastActiveDateEpochDay
+            val streak = StudyStreakCalculator.nextStreak(existing.streakDays, lastActive, today)
+            val attempts = db.studyDao().getAttemptCount()
+            val points = existing.totalPoints + score.pointsEarned
+            val saved = existing.copy(
+                totalQuizzes = attempts,
+                averageScore = db.studyDao().getAverageScore(),
+                timeStudiedHours = (db.studyDao().getStudyTimeSeconds() / 3600L).toInt(),
+                totalPoints = points,
+                globalRank = if (points >= 94800) 1 else 2,
+                streakDays = streak,
+                lastActiveDateEpochDay = today
             )
-            db.recentActivityDao().insert(activityEntity)
+            db.userProfileDao().insertOrUpdate(saved)
+            db.recentActivityDao().insert(RecentActivityEntity(
+                id = activity.id, title = activity.title, subtitle = activity.subtitle,
+                progressPercent = activity.progressPercent, isCompleted = true,
+                iconType = activity.iconType, timestamp = now
+            ))
         }
+    }
+
+    fun getOpenMistakes(): Flow<List<MistakeEntity>> =
+        database?.studyDao()?.getOpenMistakes() ?: flowOf(emptyList())
+
+    suspend fun getUnitProgress(unitId: String): UnitProgress {
+        val db = database ?: return UnitProgress(unitId, 0, 0, 0, 0, null)
+        val attempts = db.studyDao().getAttemptsForUnit(unitId)
+        val schedules = db.flashcardScheduleDao().getSchedulesForUnitOnce(unitId)
+        val reviewed = schedules.count { it.repetitions > 0 || it.lastReviewedAtEpochMillis != null }
+        val accuracy = if (attempts.isEmpty()) 0 else
+            ((attempts.sumOf { it.correctAnswers }.toFloat() / attempts.sumOf { it.totalQuestions }.coerceAtLeast(1)) * 100).toInt()
+        val mastery = ((accuracy * 0.7f) + (reviewed.coerceAtMost(10) / 10f * 30f)).toInt().coerceIn(0, 100)
+        return UnitProgress(unitId, attempts.size, accuracy, reviewed, mastery,
+            attempts.maxOfOrNull { it.completedAtEpochMillis })
     }
 
     fun getFlashcardProgressForUnit(unitId: String): Flow<List<FlashcardProgressEntity>> {

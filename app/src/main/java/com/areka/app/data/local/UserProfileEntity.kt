@@ -9,7 +9,7 @@ data class UserProfileEntity(
     @PrimaryKey val id: Int = 1,
     val name: String = "Student",
     val grade: String = "Grade 10",
-    val streakDays: Int = 1,
+    val streakDays: Int = 0,
     val totalQuizzes: Int = 0,
     val averageScore: Int = 0,
     val timeStudiedHours: Int = 0,
@@ -31,17 +31,5 @@ data class UserProfileEntity(
 
     companion object {
         fun default(): UserProfileEntity = UserProfileEntity()
-
-        fun demoSeed(): UserProfileEntity = UserProfileEntity(
-            name = "Sarah Johnson",
-            grade = "Grade 10",
-            streakDays = 45,
-            totalQuizzes = 124,
-            averageScore = 88,
-            timeStudiedHours = 152,
-            globalRank = 2,
-            totalPoints = 91200,
-            isDarkTheme = true
-        )
     }
 }

@@ -11,9 +11,11 @@ import androidx.room.RoomDatabase
         RecentActivityEntity::class,
         FlashcardProgressEntity::class,
         FlashcardScheduleEntity::class,
-        ReviewLogEntity::class
+        ReviewLogEntity::class,
+        QuizAttemptEntity::class,
+        MistakeEntity::class
     ],
-    version = 3,
+    version = 5,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -21,6 +23,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun recentActivityDao(): RecentActivityDao
     abstract fun flashcardProgressDao(): FlashcardProgressDao
     abstract fun flashcardScheduleDao(): FlashcardScheduleDao
+    abstract fun studyDao(): StudyDao
 
     companion object {
         @Volatile
@@ -33,7 +36,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "areka_study_db"
                 )
-                    .fallbackToDestructiveMigration(dropAllTables = true)
+                    .addMigrations(MIGRATION_3_4, MIGRATION_4_5)
                     .build()
                 INSTANCE = instance
                 instance

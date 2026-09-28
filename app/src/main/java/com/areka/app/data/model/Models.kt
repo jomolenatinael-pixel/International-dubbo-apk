@@ -84,12 +84,12 @@ enum class BadgeType {
 data class UserProfile(
     val name: String = "Sarah Johnson",
     val grade: String = "Grade 10",
-    val streakDays: Int = 45,
-    val totalQuizzes: Int = 124,
-    val averageScore: Int = 88,
-    val timeStudiedHours: Int = 152,
+    val streakDays: Int = 0,
+    val totalQuizzes: Int = 0,
+    val averageScore: Int = 0,
+    val timeStudiedHours: Int = 0,
     val globalRank: Int = 2,
-    val totalPoints: Int = 91200
+    val totalPoints: Int = 0
 )
 
 data class Achievement(

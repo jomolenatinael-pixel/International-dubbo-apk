@@ -110,7 +110,7 @@ fun ArekaTopBar(
                         )
                     )
                     Text(
-                        text = "Grade 10 • STEM",
+                        text = "Grade 10 • New Curriculum",
                         style = MaterialTheme.typography.bodySmall.copy(
                             color = MaterialTheme.colorScheme.secondaryTextColor,
                             fontSize = 11.sp

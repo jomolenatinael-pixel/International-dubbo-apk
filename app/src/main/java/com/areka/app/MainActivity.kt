@@ -96,15 +96,15 @@ fun ArekaApp(
                             }
                         )
                 ) {
-                    if (currentActiveQuiz != null) {
+                    currentActiveQuiz?.let { activeQuiz ->
                         QuizScreen(
-                            quiz = currentActiveQuiz!!,
+                            quiz = activeQuiz,
                             onBack = { viewModel.exitActiveQuiz() },
                             onOpenFlashcards = { subjectId, unitId ->
                                 viewModel.openFlashcards(subjectId, unitId)
                             }
                         )
-                    } else {
+                    } ?: run {
                         AnimatedContent(
                             targetState = currentDestination,
                             label = "screenTransition"

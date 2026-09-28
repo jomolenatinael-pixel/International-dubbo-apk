@@ -631,8 +631,6 @@ fun DashboardScreen(
 
                     Spacer(modifier = Modifier.height(10.dp))
 
-                    val featuredMathQuiz = remember { StudyRepository.getQuizForUnit("math_u1") }
-
                     Card(
                         shape = RoundedCornerShape(18.dp),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -641,8 +639,8 @@ fun DashboardScreen(
                             .fillMaxWidth()
                             .clickable(
                                 role = Role.Button,
-                                onClickLabel = "Start Relations and Functions Quiz"
-                            ) { onStartQuiz(featuredMathQuiz) }
+                                onClickLabel = "Start Algebra Review Quiz"
+                            ) { onStartQuiz(StudyRepository.algebraReviewQuiz) }
                             .testTag("recommended_quiz_card")
                     ) {
                         Row(
@@ -675,14 +673,14 @@ fun DashboardScreen(
 
                                 Column {
                                     Text(
-                                        text = "Relations & Functions Quiz",
+                                        text = "Algebra Review Quiz",
                                         style = MaterialTheme.typography.titleSmall.copy(
                                             fontWeight = FontWeight.Bold,
                                             color = MaterialTheme.colorScheme.onBackground
                                         )
                                     )
                                     Text(
-                                        text = "Grade 10 Math • Unit 1 • 4 Questions • 10 mins",
+                                        text = "Grade 10 • 3 Questions • 12 mins",
                                         style = MaterialTheme.typography.bodySmall.copy(
                                             color = MaterialTheme.colorScheme.secondaryTextColor,
                                             fontSize = 11.sp
@@ -692,7 +690,7 @@ fun DashboardScreen(
                             }
 
                             IconButton(
-                                onClick = { onStartQuiz(featuredMathQuiz) },
+                                onClick = { onStartQuiz(StudyRepository.algebraReviewQuiz) },
                                 modifier = Modifier
                                     .size(44.dp)
                                     .clip(CircleShape)
@@ -700,7 +698,7 @@ fun DashboardScreen(
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.PlayArrow,
-                                    contentDescription = "Start Relations and Functions Quiz",
+                                    contentDescription = "Start Algebra Quiz",
                                     tint = Color.White,
                                     modifier = Modifier.size(22.dp)
                                 )
@@ -712,9 +710,9 @@ fun DashboardScreen(
         }
     }
 
-    if (selectedSubjectForUnits != null) {
+    selectedSubjectForUnits?.let { selectedSubject ->
         UnitSelectionDialog(
-            subject = selectedSubjectForUnits!!,
+            subject = selectedSubject,
             onDismiss = { selectedSubjectForUnits = null },
             onStartQuizForUnit = { quiz ->
                 selectedSubjectForUnits = null

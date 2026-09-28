@@ -30,6 +30,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.areka.app.data.model.Question
 import com.areka.app.data.model.Quiz
+import com.areka.app.data.model.QuizScore
+import com.areka.app.data.model.QuizScoring
+import com.areka.app.data.local.MistakeEntity
 import com.areka.app.data.repository.StudyRepository
 import com.areka.app.ui.components.CircularScoreGauge
 import com.areka.app.ui.components.TrendLineChart
@@ -136,18 +139,39 @@ fun QuizScreen(
     val timerText = String.format("%02d:%02d", minutes, seconds)
 
     if (quizSubmitted) {
-        // Calculate score safely
-        val correctCount = quiz.questions.count { q ->
-            userAnswers[q.id] == q.correctOptionId
-        }
-        val scorePercent = if (totalQuestions > 0) ((correctCount.toFloat() / totalQuestions) * 100).toInt() else 0
-        val pointsEarned = correctCount * 200 + 100
+        val score: QuizScore = QuizScoring.calculate(quiz, userAnswers)
+        val correctCount = score.correctAnswers
+        val scorePercent = score.percentage
+        val pointsEarned = score.pointsEarned
 
         // Deduplicated record call: only fires once per session submission
         LaunchedEffect(quizSubmitted, quiz.id, sessionKey) {
             if (quizSubmitted && !hasRecordedResult && totalQuestions > 0) {
                 hasRecordedResult = true
-                StudyRepository.recordQuizResult(quiz.title, scorePercent, correctCount, totalQuestions)
+                val mistakes = quiz.questions.filter { question ->
+                    userAnswers[question.id] != question.correctOptionId
+                }.map { question ->
+                    val selected = question.options.find { it.id == userAnswers[question.id] }?.text
+                        ?: "Skipped"
+                    val correct = question.options.find { it.id == question.correctOptionId }?.text
+                        ?: question.correctOptionId
+                    MistakeEntity(
+                        quizId = quiz.id,
+                        questionId = question.id,
+                        questionText = question.text,
+                        selectedAnswer = selected,
+                        correctAnswer = correct,
+                        subjectId = quiz.subjectId ?: "",
+                        unitId = quiz.unitId ?: "",
+                        explanation = question.explanation
+                    )
+                }
+                StudyRepository.recordQuizResult(
+                    quiz = quiz,
+                    score = score,
+                    timeSpentSeconds = initialSeconds - secondsRemaining,
+                    mistakes = mistakes
+                )
             }
         }
 

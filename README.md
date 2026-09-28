@@ -11,7 +11,7 @@
 - User profile, streaks, points, rankings, and leaderboard views
 - Light and dark theme support
 - Local persistence with Room database
-- Optional Firebase and Gemini AI integration
+- Offline-first local study data and progress tracking
 - Compose UI screenshot and unit/instrumentation test setup
 
 ## Technology stack
@@ -50,12 +50,9 @@ app/src/main/java/com/areka/app/
 - Android Studio with Android SDK 36.1 or a compatible Android build environment
 - JDK 11
 - Android device or emulator running API 24 or later
-- Optional Firebase configuration when Firebase-backed features are enabled
-- Optional Gemini API configuration for AI features
+- Any future remote-service configuration should be added through the project’s secret-management workflow
 
 ## Configuration
-
-The project includes `.env.example` as a template for local secrets. Copy it to `.env` only in a local, ignored working copy and provide the required values through your development environment or Android Studio Secrets configuration.
 
 Never commit API keys, passwords, signing keys, `google-services.json`, or other private credentials to Git.
 

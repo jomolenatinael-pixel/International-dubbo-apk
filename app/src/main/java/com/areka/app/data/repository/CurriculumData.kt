@@ -218,8 +218,13 @@ object CurriculumData {
         val unitCards = getFlashcardsForUnit(unit.id)
 
         val questions = unitCards.take(4).mapIndexed { index, card ->
-            val wrongOptions = unitCards.filter { it.id != card.id }.map { it.back }.shuffled().take(3)
-            val allOptionTexts = (listOf(card.back) + wrongOptions).shuffled()
+            val wrongOptions = unitCards
+                .filter { it.id != card.id }
+                .sortedBy { "${unit.id}:${it.id}:wrong".hashCode() }
+                .map { it.back }
+                .take(3)
+            val allOptionTexts = (listOf(card.back) + wrongOptions)
+                .sortedBy { "${unit.id}:$index:${it.hashCode()}".hashCode() }
             val correctIndex = allOptionTexts.indexOf(card.back)
             val correctId = ('a'.code + (if (correctIndex >= 0) correctIndex else 0)).toChar().toString()
 
