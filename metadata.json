@@ -1,0 +1,6 @@
+{
+  "name": "Areka",
+  "description": "AI-Powered Study & Quiz platform with interactive tests, intelligent assistant, leaderboards, and progress tracking.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

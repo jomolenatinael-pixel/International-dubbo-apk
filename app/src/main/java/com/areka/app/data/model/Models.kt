@@ -1,0 +1,117 @@
+package com.areka.app.data.model
+
+data class QuestionOption(
+    val id: String,
+    val text: String
+)
+
+data class Question(
+    val id: Int,
+    val questionNumber: Int,
+    val totalQuestions: Int,
+    val text: String,
+    val options: List<QuestionOption>,
+    val correctOptionId: String,
+    val explanation: String
+)
+
+data class Quiz(
+    val id: String,
+    val title: String,
+    val subject: String,
+    val durationMinutes: Int,
+    val questions: List<Question>,
+    val gradeLevel: String = "Grade 10",
+    val iconName: String = "quiz",
+    val unitId: String? = null,
+    val subjectId: String? = null
+)
+
+data class QuizResult(
+    val quizTitle: String,
+    val totalQuestions: Int,
+    val correctAnswers: Int,
+    val scorePercentage: Int,
+    val timeSpentSeconds: Int,
+    val pointsEarned: Int
+)
+
+data class SubjectItem(
+    val id: String,
+    val name: String,
+    val iconType: String,
+    val quizCount: Int,
+    val accentColorHex: Long,
+    val description: String = ""
+)
+
+data class SubjectUnit(
+    val id: String,
+    val subjectId: String,
+    val unitNumber: Int,
+    val title: String,
+    val description: String,
+    val flashcardCount: Int = 0,
+    val quizCount: Int = 1
+)
+
+data class Flashcard(
+    val id: String,
+    val subjectId: String,
+    val unitId: String,
+    val front: String,
+    val back: String
+)
+
+data class LeaderboardEntry(
+    val id: String,
+    val rank: Int,
+    val name: String,
+    val grade: String,
+    val points: Int,
+    val isCurrentUser: Boolean = false,
+    val badgeType: BadgeType = BadgeType.REGULAR,
+    val avatarColorHex: Long = 0xFF3B82F6
+)
+
+enum class BadgeType {
+    GOLD,
+    SILVER,
+    BRONZE,
+    REGULAR
+}
+
+data class UserProfile(
+    val name: String = "Sarah Johnson",
+    val grade: String = "Grade 10",
+    val streakDays: Int = 45,
+    val totalQuizzes: Int = 124,
+    val averageScore: Int = 88,
+    val timeStudiedHours: Int = 152,
+    val globalRank: Int = 2,
+    val totalPoints: Int = 91200
+)
+
+data class Achievement(
+    val id: String,
+    val title: String,
+    val description: String,
+    val iconType: String,
+    val unlocked: Boolean = true
+)
+
+data class RecentActivity(
+    val id: String,
+    val title: String,
+    val subtitle: String,
+    val progressPercent: Int,
+    val isCompleted: Boolean = true,
+    val iconType: String = "quiz"
+)
+
+data class DailyStreakBadge(
+    val daysRequired: Int,
+    val title: String,
+    val colorHex: Long,
+    val isUnlocked: Boolean
+)
