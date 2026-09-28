@@ -11,6 +11,7 @@ import com.areka.app.data.local.RecentActivityEntity
 import com.areka.app.data.local.ReviewGrade
 import com.areka.app.data.local.UserProfileEntity
 import com.areka.app.data.model.*
+import com.areka.app.data.remote.SupabaseQuestionSync
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -57,6 +58,9 @@ object StudyRepository {
         database = db
 
         repositoryScope.launch {
+            // Refresh the remote bank in the background; bundled content remains the fallback.
+            SupabaseQuestionSync.sync(context.applicationContext)
+
             // Seed default profile if empty
             val existingProfile = db.userProfileDao().getUserProfileOnce()
             if (existingProfile == null) {
