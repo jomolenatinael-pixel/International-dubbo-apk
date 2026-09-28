@@ -35,7 +35,6 @@ import com.areka.app.data.model.QuizScoring
 import com.areka.app.data.local.MistakeEntity
 import com.areka.app.data.repository.StudyRepository
 import com.areka.app.ui.components.CircularScoreGauge
-import com.areka.app.ui.components.TrendLineChart
 import com.areka.app.ui.theme.*
 import kotlinx.coroutines.delay
 
@@ -659,30 +658,14 @@ fun QuizResultsView(
                 }
             }
 
-            // Trend Chart
-            Card(
-                shape = RoundedCornerShape(18.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "Topic Performance Curve",
-                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
-                    )
-                    Spacer(modifier = Modifier.height(10.dp))
-                    TrendLineChart(points = listOf(50f, 65f, 55f, 80f, scorePercent.toFloat()))
-                }
-            }
-
             // Question Breakdown List
             Text(
-                text = "Detailed Breakdown",
+                text = if (showMistakesOnly) "Mistakes to review" else "Detailed Breakdown",
                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                 modifier = Modifier.align(Alignment.Start)
             )
 
-            quiz.questions.forEach { question ->
+            quiz.questions.filter { !showMistakesOnly || userAnswers[it.id] != it.correctOptionId }.forEach { question ->
                 val userAnswer = userAnswers[question.id]
                 val isCorrect = userAnswer == question.correctOptionId
 
@@ -744,6 +727,21 @@ fun QuizResultsView(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+                if (correctCount < totalQuestions) {
+                    Button(
+                        onClick = { showMistakesOnly = true },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = CoralRed),
+                        modifier = Modifier.weight(1f).heightIn(min = 48.dp)
+                    ) { Text("Review mistakes", fontWeight = FontWeight.Bold) }
+                } else {
+                    Button(
+                        onClick = onBackToDashboard,
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = if (LocalThemeIsDark.current) NeonCyan else ElectricBlue),
+                        modifier = Modifier.weight(1f).heightIn(min = 48.dp)
+                    ) { Text("Done", fontWeight = FontWeight.Bold) }
+                }
                 OutlinedButton(
                     onClick = onRetake,
                     shape = RoundedCornerShape(12.dp),

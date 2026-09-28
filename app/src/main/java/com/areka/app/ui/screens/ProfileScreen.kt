@@ -53,7 +53,6 @@ fun ProfileScreen(
     var editNameInput by remember(userProfile.name) { mutableStateOf(userProfile.name) }
     var editGradeInput by remember(userProfile.grade) { mutableStateOf(userProfile.grade) }
 
-    val achievements = StudyRepository.userAchievements
     val activities by StudyRepository.recentActivities.collectAsStateWithLifecycle()
     val openMistakes by StudyRepository.openMistakes.collectAsStateWithLifecycle()
     val leaderboardEntries = remember(userProfile) {
@@ -297,7 +296,7 @@ fun ProfileScreen(
                                         )
                                     )
                                     Text(
-                                        text = "${userProfile.grade} • Student",
+                                        text = "Grade 10 · New Curriculum",
                                         style = MaterialTheme.typography.bodySmall.copy(
                                             color = primaryAccent,
                                             fontWeight = FontWeight.SemiBold
@@ -378,13 +377,13 @@ fun ProfileScreen(
 
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
-                                    text = "Global Rank",
+                                    text = "Quizzes",
                                     style = MaterialTheme.typography.bodySmall.copy(
                                         color = MaterialTheme.colorScheme.secondaryTextColor
                                     )
                                 )
                                 Text(
-                                    text = "#${userProfile.globalRank}",
+                                    text = "${userProfile.totalQuizzes}",
                                     style = MaterialTheme.typography.titleLarge.copy(
                                         fontWeight = FontWeight.Bold,
                                         color = primaryAccent
@@ -435,62 +434,6 @@ fun ProfileScreen(
                 }
             }
 
-            // Achievements section
-            item(key = "achievements_section") {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Text(
-                        text = "Achievements",
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onBackground
-                        )
-                    )
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        achievements.take(3).forEach { ach ->
-                            Surface(
-                                shape = RoundedCornerShape(14.dp),
-                                color = MaterialTheme.colorScheme.surface,
-                                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Column(
-                                    modifier = Modifier.padding(10.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally
-                                ) {
-                                    val icon = when (ach.iconType) {
-                                        "trophy" -> Icons.Default.EmojiEvents
-                                        "star" -> Icons.Default.Star
-                                        else -> Icons.Default.Spa
-                                    }
-                                    val tint = when (ach.iconType) {
-                                        "trophy" -> AmberGold
-                                        "star" -> if (LocalThemeIsDark.current) NeonCyan else ElectricBlue
-                                        else -> EmeraldGreen
-                                    }
-
-                                    Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(24.dp))
-                                    Spacer(modifier = Modifier.height(6.dp))
-                                    Text(
-                                        text = ach.title,
-                                        style = MaterialTheme.typography.labelSmall.copy(
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.onBackground
-                                        ),
-                                        maxLines = 1
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
             // Leaderboard section (Top Ranks)
             item(key = "leaderboard_section_header") {
                 Column(
@@ -521,9 +464,20 @@ fun ProfileScreen(
                 }
             }
 
-            items(leaderboardEntries.take(5), key = { "profile_leaderboard_${it.id}" }) { entry ->
-                LeaderboardRowCard(entry = entry)
+            if (userProfile.totalQuizzes == 0) {
+                item(key = "leaderboard_empty") {
+                    Text(
+                        text = "Complete a quiz to appear on the leaderboard.",
+                        style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.secondaryTextColor),
+                        modifier = Modifier.padding(horizontal = 4.dp)
+                    )
+                }
+            } else {
+                items(leaderboardEntries.take(5), key = { "profile_leaderboard_${it.id}" }) { entry ->
+                    LeaderboardRowCard(entry = entry)
+                }
             }
+
 
             // Quiz Mistakes Review Entry Card
             item(key = "mistakes_review_card") {
