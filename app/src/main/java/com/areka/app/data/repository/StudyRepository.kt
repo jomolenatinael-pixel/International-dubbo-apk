@@ -7,6 +7,8 @@ import com.areka.app.data.local.FlashcardScheduleEntity
 import com.areka.app.data.local.MistakeEntity
 import com.areka.app.data.local.ReviewGrade
 import com.areka.app.data.model.*
+import com.areka.app.data.remote.SupabaseAuth
+import com.areka.app.data.remote.SupabaseCloudSync
 import com.areka.app.data.remote.SupabaseQuestionSync
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -53,6 +55,8 @@ object StudyRepository {
         if (database != null) return
         val db = AppDatabase.getInstance(context)
         database = db
+        SupabaseAuth.initialize(context.applicationContext)
+        SupabaseCloudSync.initialize(context.applicationContext)
 
         // Attach DAOs to focused repositories
         profileRepository.attachDao(db.userProfileDao())

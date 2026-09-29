@@ -13,7 +13,7 @@ data class UserProfileEntity(
     val totalQuizzes: Int = 0,
     val averageScore: Int = 0,
     val timeStudiedHours: Int = 0,
-    val globalRank: Int = 11,
+    val globalRank: Int = 0,
     val totalPoints: Int = 0,
     val isDarkTheme: Boolean = true,
     val lastActiveDateEpochDay: Long = 0L

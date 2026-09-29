@@ -54,9 +54,9 @@ Static validation completed:
 
 ## Remaining known issues / environment blockers
 
-- The repository has no Gradle wrapper, and this sandbox has no system Gradle or configured Android SDK, so `assembleDebug` could not be run here.
+- The repository now includes the Gradle wrapper, but this sandbox has no configured Android SDK. `./gradlew testDebugUnitTest` reaches Gradle and stops at SDK discovery; source compilation could not be completed in this environment.
 - Some achievement criteria (perfect-score streak, Biology mastery, and speed completion) do not yet have enough persisted source data to calculate honestly; they remain locked until those metrics are implemented.
-- The repository still contains the existing mock leaderboard data source; it is used for the in-app leaderboard presentation and is not a network-backed ranking service.
+- The repository still contains the existing mock leaderboard data source for compatibility with legacy logic/tests, but production Profile no longer renders those fictional rows. Authenticated Profile uses the Supabase leaderboard; guest Profile shows an honest empty state.
 
 ## History quiz import
 
@@ -85,3 +85,9 @@ The complete catalog is now exposed through `CurriculumData.quizzes`, used by `S
 7. Open Quiz; confirm Subject → Unit → Take Quiz → Results → Back.
 8. Complete a quiz and confirm points, attempts, average score, streak, and rank update from real activity.
 9. Confirm Profile keeps the leaderboard section and does not add a bottom-nav leaderboard tab.
+
+## Supabase/auth phase
+
+Inspection found a live schema conflict: the connected project already had `profiles` (`id`, `full_name`, `created_at`) and a legacy `attempts` table with a different shape, plus the public `quizzes`, `questions`, and `choices` question-bank tables. Per approval, the migration preserves the legacy tables, extends `profiles`, and creates app-owned `quiz_attempts`, `flashcard_progress`, and `areka_leaderboard` objects with RLS. The SQL is provided at `supabase/migrations/20260929_areka_auth_sync.sql`; the Supabase dashboard session was not authenticated in this sandbox, so it must be pasted into the project SQL Editor.
+
+Android integration is guest-first and uses no new dependency: `BuildConfig` reads `SUPABASE_URL` and `SUPABASE_ANON_KEY` from ignored `local.properties`; `SupabaseAuth` implements email/password sign-up, sign-in, sign-out, refresh-token session persistence, and offline-safe errors; `SupabaseCloudSync` uploads profile/quiz attempts after Room writes and refreshes the authenticated leaderboard. Profile shows auth controls and does not display fabricated guest ranks. Setup and architecture details are in `SUPABASE_SETUP.md`.

@@ -31,6 +31,7 @@ import com.areka.app.data.model.Achievement
 import com.areka.app.data.model.LeaderboardEntry
 import com.areka.app.data.model.RecentActivity
 import com.areka.app.data.model.UserProfile
+import com.areka.app.data.remote.SupabaseCloudSync
 import com.areka.app.data.repository.StudyRepository
 import com.areka.app.ui.components.MistakesReviewDialog
 import com.areka.app.ui.theme.*
@@ -56,9 +57,9 @@ fun ProfileScreen(
     val achievements = StudyRepository.userAchievements
     val activities by StudyRepository.recentActivities.collectAsStateWithLifecycle()
     val openMistakes by StudyRepository.openMistakes.collectAsStateWithLifecycle()
-    val leaderboardEntries = remember(userProfile) {
-        StudyRepository.getGlobalLeaderboard(userProfile)
-    }
+    val remoteLeaderboard by SupabaseCloudSync.leaderboard.collectAsStateWithLifecycle()
+    val leaderboardEntries = remoteLeaderboard
+    val liveRank = remoteLeaderboard.firstOrNull { it.isCurrentUser }?.rank
 
     if (showEditDialog) {
         AlertDialog(
@@ -222,6 +223,10 @@ fun ProfileScreen(
             contentPadding = PaddingValues(top = 12.dp, bottom = 80.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
+            item(key = "auth_section") {
+                AuthSection()
+            }
+
             // Profile Hero Card
             item(key = "hero_card") {
                 val primaryAccent = if (LocalThemeIsDark.current) NeonCyan else ElectricBlue
@@ -384,7 +389,7 @@ fun ProfileScreen(
                                     )
                                 )
                                 Text(
-                                    text = if (userProfile.totalPoints > 0) "#${userProfile.globalRank}" else "—",
+                                    text = liveRank?.let { "#$it" } ?: "—",
                                     style = MaterialTheme.typography.titleLarge.copy(
                                         fontWeight = FontWeight.Bold,
                                         color = primaryAccent
@@ -518,6 +523,18 @@ fun ProfileScreen(
                             )
                         )
                     }
+                }
+            }
+
+            if (leaderboardEntries.isEmpty()) {
+                item(key = "leaderboard_empty_state") {
+                    Text(
+                        text = "Sign in to view the live leaderboard. No rankings are fabricated for guest mode.",
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            color = MaterialTheme.colorScheme.secondaryTextColor
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
             }
 

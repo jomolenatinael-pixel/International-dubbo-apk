@@ -1,9 +1,20 @@
+import java.util.Properties
+
 plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.kotlin.compose)
   alias(libs.plugins.google.devtools.ksp)
   alias(libs.plugins.roborazzi)
 }
+
+val localProperties = Properties().apply {
+  val file = rootProject.file("local.properties")
+  if (file.exists()) file.inputStream().use(::load)
+}
+
+fun localProperty(name: String): String = localProperties.getProperty(name, "")
+  .replace("\\", "\\\\")
+  .replace("\"", "\\\"")
 
 android {
   namespace = "com.areka.app"
@@ -15,6 +26,9 @@ android {
     targetSdk = 36
     versionCode = 1
     versionName = "1.0"
+
+    buildConfigField("String", "SUPABASE_URL", "\"${localProperty("SUPABASE_URL")}\"")
+    buildConfigField("String", "SUPABASE_ANON_KEY", "\"${localProperty("SUPABASE_ANON_KEY")}\"")
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
@@ -101,4 +115,3 @@ dependencies {
 tasks.matching { it.name.startsWith("ksp") && it.name.contains("UnitTest") }.configureEach {
   enabled = false
 }
-

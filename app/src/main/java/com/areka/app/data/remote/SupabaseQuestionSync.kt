@@ -2,6 +2,7 @@ package com.areka.app.data.remote
 
 import android.content.Context
 import android.util.Log
+import com.areka.app.BuildConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -19,15 +20,15 @@ import java.net.UnknownHostException
  */
 object SupabaseQuestionSync : RemoteQuestionDataSource {
     private const val TAG = "SupabaseQuestionSync"
-    private const val BASE_URL = "https://jxdfukggxxlemsoumtal.supabase.co"
-    // Supabase publishable anon keys are safe for public client applications; RLS remains authoritative.
-    private const val PUBLISHABLE_KEY = "sb_publishable_DOToB455mOzuaWpUnFO1cg_OhejqXQj"
     private const val CACHE_FILE = "supabase_question_bank.json"
     private const val PREFS = "supabase_sync"
     private const val LAST_SYNC = "last_sync_epoch_ms"
     private const val SYNC_INTERVAL_MS = 6 * 60 * 60 * 1000L
 
     override suspend fun sync(context: Context, force: Boolean): SyncResult = withContext(Dispatchers.IO) {
+        if (BuildConfig.SUPABASE_URL.isBlank() || BuildConfig.SUPABASE_ANON_KEY.isBlank()) {
+            return@withContext SyncResult.NetworkError("Supabase is not configured; using bundled curriculum.")
+        }
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val now = System.currentTimeMillis()
         val lastSync = prefs.getLong(LAST_SYNC, 0L)
@@ -89,12 +90,12 @@ object SupabaseQuestionSync : RemoteQuestionDataSource {
     }
 
     private fun get(path: String): JSONArray {
-        val connection = (URL(BASE_URL + path).openConnection() as HttpURLConnection).apply {
+        val connection = (URL(BuildConfig.SUPABASE_URL.trimEnd('/') + path).openConnection() as HttpURLConnection).apply {
             requestMethod = "GET"
             connectTimeout = 12_000
             readTimeout = 20_000
-            setRequestProperty("apikey", PUBLISHABLE_KEY)
-            setRequestProperty("Authorization", "Bearer $PUBLISHABLE_KEY")
+            setRequestProperty("apikey", BuildConfig.SUPABASE_ANON_KEY)
+            setRequestProperty("Authorization", "Bearer ${BuildConfig.SUPABASE_ANON_KEY}")
             setRequestProperty("Accept", "application/json")
         }
         return try {

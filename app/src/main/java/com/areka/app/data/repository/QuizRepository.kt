@@ -10,13 +10,17 @@ import com.areka.app.data.model.QuizScore
 import com.areka.app.data.model.RecentActivity
 import com.areka.app.data.model.UnitProgress
 import com.areka.app.data.model.UserProfile
+import com.areka.app.data.remote.SupabaseCloudSync
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
 import java.time.LocalDate
+import java.util.Date
+import java.util.Locale
 
 class QuizRepository(
     private val databaseProvider: () -> AppDatabase?,
@@ -122,6 +126,16 @@ class QuizRepository(
                 )
             )
             onRecorded?.invoke(saved.toUserProfile())
+
+            // Cloud sync is deliberately after Room persistence and never blocks quiz UI.
+            SupabaseCloudSync.pushQuizAttempt(
+                quiz = quiz,
+                score = score,
+                completedAtIso = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US)
+                    .apply { timeZone = java.util.TimeZone.getTimeZone("UTC") }
+                    .format(Date(now))
+            )
+            SupabaseCloudSync.syncProfile(saved.toUserProfile())
         }
     }
 }

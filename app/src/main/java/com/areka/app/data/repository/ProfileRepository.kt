@@ -26,7 +26,7 @@ class ProfileRepository(
             totalQuizzes = 0,
             averageScore = 0,
             timeStudiedHours = 0,
-            globalRank = 11,
+            globalRank = 0,
             totalPoints = 0
         )
     )
