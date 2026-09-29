@@ -13,8 +13,9 @@ import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
+import java.util.UUID
 
-/** Cloud sync is best-effort; Room remains the source of truth for offline study. */
+/** Cloud sync is best-effort and idempotent; Room remains the source of truth for offline study. */
 object SupabaseCloudSync {
     private const val PREFS = "areka_cloud_sync"
     private const val PENDING_ATTEMPTS = "pending_attempts"
@@ -72,10 +73,25 @@ object SupabaseCloudSync {
         }
     }
 
-    suspend fun pushQuizAttempt(quiz: Quiz, score: QuizScore, completedAtIso: String): Result<Unit> = withContext(Dispatchers.IO) {
+    /**
+     * Idempotent push of a quiz attempt.
+     * Uses a stable UUID derived deterministically from the user and attempt identities.
+     * Guaranteed not to create duplicate rows on retries or network drops.
+     */
+    suspend fun pushQuizAttempt(
+        quiz: Quiz,
+        score: QuizScore,
+        completedAtIso: String,
+        localAttemptId: String? = null
+    ): Result<Unit> = withContext(Dispatchers.IO) {
         val auth = SupabaseAuth.state.value as? AuthState.SignedIn
             ?: return@withContext Result.failure(SyncException("Not authenticated"))
+
+        val seed = "${auth.user.id}_${localAttemptId ?: "${quiz.id}_$completedAtIso"}"
+        val attemptUuid = UUID.nameUUIDFromBytes(seed.toByteArray(Charsets.UTF_8)).toString()
+
         val body = JSONObject()
+            .put("id", attemptUuid)
             .put("user_id", auth.user.id)
             .put("subject_id", quiz.subjectId ?: quiz.subject.lowercase())
             .put("unit_id", quiz.unitId ?: "unknown")
@@ -85,7 +101,12 @@ object SupabaseCloudSync {
             .put("points_earned", score.pointsEarned)
             .put("completed_at", completedAtIso)
         try {
-            SupabaseAuth.authenticatedRequest("/rest/v1/quiz_attempts", "POST", body, prefer = "return=minimal")
+            SupabaseAuth.authenticatedRequest(
+                path = "/rest/v1/quiz_attempts",
+                method = "POST",
+                body = body,
+                prefer = "resolution=merge-duplicates,return=minimal"
+            )
             Result.success(Unit)
         } catch (e: Exception) {
             enqueueAttempt(body)
@@ -93,16 +114,34 @@ object SupabaseCloudSync {
         }
     }
 
+    /**
+     * Drains queued offline quiz attempts idempotently.
+     * Only deletes an attempt after successful server acknowledgement.
+     * Strictly verifies that attempts belong to the currently authenticated user.
+     */
     suspend fun drainPendingAttempts() = withContext(Dispatchers.IO) {
-        if (SupabaseAuth.state.value !is AuthState.SignedIn) return@withContext
+        val auth = SupabaseAuth.state.value as? AuthState.SignedIn ?: return@withContext
         val prefs = appContext?.getSharedPreferences(PREFS, Context.MODE_PRIVATE) ?: return@withContext
         val pending = try { JSONArray(prefs.getString(PENDING_ATTEMPTS, "[]") ?: "[]") } catch (_: Exception) { JSONArray() }
         val remaining = JSONArray()
         for (index in 0 until pending.length()) {
             val body = pending.optJSONObject(index) ?: continue
+            val attemptUserId = body.optString("user_id")
+            if (attemptUserId != auth.user.id) {
+                // Do not attempt to sync another user's attempt; retain for proper owner
+                remaining.put(body)
+                continue
+            }
             try {
-                SupabaseAuth.authenticatedRequest("/rest/v1/quiz_attempts", "POST", body, prefer = "return=minimal")
+                SupabaseAuth.authenticatedRequest(
+                    path = "/rest/v1/quiz_attempts",
+                    method = "POST",
+                    body = body,
+                    prefer = "resolution=merge-duplicates,return=minimal"
+                )
+                // Successfully acknowledged by server -> safely removed from queue
             } catch (_: Exception) {
+                // Failed -> retain for future retry
                 remaining.put(body)
             }
         }
@@ -141,6 +180,15 @@ object SupabaseCloudSync {
     private fun enqueueAttempt(body: JSONObject) {
         val prefs = appContext?.getSharedPreferences(PREFS, Context.MODE_PRIVATE) ?: return
         val pending = try { JSONArray(prefs.getString(PENDING_ATTEMPTS, "[]") ?: "[]") } catch (_: Exception) { JSONArray() }
+        
+        // Prevent duplicate queuing of the exact same attempt id
+        val idToQueue = body.optString("id")
+        for (i in 0 until pending.length()) {
+            if (pending.optJSONObject(i)?.optString("id") == idToQueue) {
+                return
+            }
+        }
+
         pending.put(body)
         prefs.edit().putString(PENDING_ATTEMPTS, pending.toString()).apply()
     }

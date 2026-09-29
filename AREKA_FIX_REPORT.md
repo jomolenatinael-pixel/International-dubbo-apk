@@ -123,3 +123,49 @@ Verification completed in this phase:
 - `./gradlew compileDebugKotlin --stacktrace` — passed; only non-blocking coroutine/migration parameter warnings remain.
 - `./gradlew testDebugUnitTest --stacktrace` — passed, 31 tests.
 - SQL migration was statically reviewed for rerunnable role/RLS setup. Live SQL execution and live account testing still require applying the migration in the connected Supabase project and using test credentials outside source control.
+
+## Production Authentication Hardening Pass
+
+A complete security hardening pass was implemented directly in the repository:
+
+1. **Keystore-Backed Secure Token Storage (`AndroidKeystoreTokenStorage`)**
+   - Access and refresh tokens are encrypted using `androidx.security.crypto.EncryptedSharedPreferences` backed by the Android Keystore (AES-256 GCM).
+   - Plaintext SharedPreferences no longer store access or refresh tokens. Non-sensitive user metadata (ID, email, display name, server admin flag) remains safely in standard preferences.
+   - Transparent legacy session migration: reads legacy plaintext tokens, saves them into encrypted storage, and immediately scrubs the plaintext keys from disk.
+   - Defensively catches keystore initialization exceptions to avoid breaking offline study or unit tests.
+   - Never logs tokens or passwords.
+
+2. **Complete Password Recovery Flow (`areka://auth/recovery`)**
+   - Registered deep-link intent filter in `AndroidManifest.xml` under `.MainActivity` with `launchMode="singleTask"`.
+   - Handled both cold starts and running/backgrounded tasks via `onCreate` and `onNewIntent`.
+   - Deep-link parser extracts access/refresh tokens from either URL fragments (`#access_token=...`) or query parameters (`?access_token=...`), handles Supabase error params, and transitions to dedicated `AuthState.PasswordRecovery`.
+   - `updatePassword` endpoint authenticates against Supabase `/auth/v1/user` using the recovery bearer token, updates the password, establishes a full authenticated session in secure storage, and clears recovery state.
+   - Users can cancel recovery or request a fresh link if the recovery session is expired/invalid.
+
+3. **Consistent Password & Credential Validation (`AuthValidator`)**
+   - Client-side validation consistent with Supabase server policy (minimum 6 characters, blank rejection, format checking).
+   - Reusable validator shared between sign-up, sign-in, and password reset flows with user-friendly error messages that do not expose server internals.
+
+4. **Robust Session Lifecycle & Concurrency**
+   - Synchronized single-flight refresh on HTTP 401 using coroutine mutex: concurrent requests await token refresh without duplicate requests or race conditions.
+   - Token rotation: newest refresh token returned by Supabase is persisted immediately to Keystore storage.
+   - Failed refresh securely clears local tokens and transitions UI to `AuthState.SignedOut`.
+   - Network/transport failures preserve the cached session for offline study.
+
+5. **Pending Cloud Attempts Idempotency & Account Isolation**
+   - Deterministic UUIDs generated for each attempt seed (`UUID.nameUUIDFromBytes("${auth.user.id}_$localAttemptId")`).
+   - PostgREST requests use `Prefer: resolution=merge-duplicates,return=minimal`.
+   - `drainPendingAttempts` verifies ownership against `auth.user.id` so accounts never leak attempts across users on shared devices.
+   - Pending attempts are only deleted after verified server acknowledgement.
+
+6. **Supabase RLS & CRUD Policy Hardening**
+   - Added `supabase/migrations/20260929_areka_auth_hardening.sql`.
+   - Added full CRUD permissions (SELECT, INSERT, UPDATE, DELETE) for authenticated users scoped strictly to `auth.uid()` on `profiles`, `quiz_attempts`, and `flashcard_progress`.
+   - Verified that `user_roles` cannot be inserted/updated/deleted by clients.
+
+7. **Automated Test Suite (`AuthSecurityTest`)**
+   - Unit tests covering:
+     - Credential validation (standard email, bad email, blank password, short password, confirmation mismatch/match)
+     - Secure token storage, legacy token migration, and plaintext scrubbing
+     - Password recovery deep link parsing (fragments, query parameters, error parameters, missing tokens)
+     - Attempt idempotency deterministic UUID stability

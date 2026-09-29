@@ -12,6 +12,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import android.content.Intent
+import com.areka.app.data.remote.AuthState
+import com.areka.app.data.remote.SupabaseAuth
 import com.areka.app.data.repository.StudyRepository
 import com.areka.app.ui.components.AppDestination
 import com.areka.app.ui.components.ArekaBottomNav
@@ -24,8 +27,22 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        handleAuthIntent(intent)
         setContent {
             ArekaApp()
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleAuthIntent(intent)
+    }
+
+    private fun handleAuthIntent(intent: Intent?) {
+        val data = intent?.data ?: return
+        if (data.scheme == "areka" && data.host == "auth") {
+            SupabaseAuth.handleRecoveryUri(data)
         }
     }
 }
@@ -43,6 +60,13 @@ fun ArekaApp(
     val quizUnitId by viewModel.quizUnitId.collectAsStateWithLifecycle()
     val searchQuery by viewModel.dashboardSearchQuery.collectAsStateWithLifecycle()
     val userProfile by StudyRepository.userProfile.collectAsStateWithLifecycle()
+    val authState by SupabaseAuth.state.collectAsStateWithLifecycle()
+
+    LaunchedEffect(authState) {
+        if (authState is AuthState.PasswordRecovery) {
+            viewModel.navigateTo(AppDestination.PROFILE)
+        }
+    }
 
     // Global back-handling to navigate to Home or exit active quiz cleanly
     BackHandler(enabled = currentActiveQuiz != null || currentDestination != AppDestination.DASHBOARD) {

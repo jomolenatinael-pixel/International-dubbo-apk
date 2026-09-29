@@ -138,7 +138,8 @@ class QuizRepository(
                 score = score,
                 completedAtIso = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US)
                     .apply { timeZone = java.util.TimeZone.getTimeZone("UTC") }
-                    .format(Date(now))
+                    .format(Date(now)),
+                localAttemptId = attempt.id
             )
             SupabaseCloudSync.syncProfile(saved.toUserProfile())
         }
