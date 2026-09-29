@@ -196,7 +196,8 @@ object CurriculumData {
     private val allQuizzesMap: Map<String, Quiz> = 
         CurriculumQuizzesPart1.quizzes +
         CurriculumQuizzesPart2.quizzes +
-        CurriculumQuizzesPart3.quizzes
+        CurriculumQuizzesPart3.quizzes +
+        CurriculumHistoryQuizImport.quizzes
 
     fun getUnitsForSubject(subjectId: String): List<SubjectUnit> {
         return units.filter { it.subjectId == subjectId }

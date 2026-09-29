@@ -211,7 +211,7 @@ fun QuizTabScreen(
                     )
                 )
                 Text(
-                    text = "4 questions • 5 min",
+                    text = "Choose a unit • Full curriculum quiz",
                     style = MaterialTheme.typography.labelSmall.copy(
                         color = accentColor,
                         fontWeight = FontWeight.SemiBold
@@ -229,6 +229,7 @@ fun QuizTabScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(unitsForSubject, key = { it.id }) { unit ->
+                    val unitQuiz = remember(unit.id) { StudyRepository.getQuizForUnit(unit.id) }
                     Card(
                         shape = RoundedCornerShape(18.dp),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -269,7 +270,7 @@ fun QuizTabScreen(
                                         modifier = Modifier.size(14.dp)
                                     )
                                     Text(
-                                        text = "5 Mins • 4 Qs",
+                                        text = "${unitQuiz.durationMinutes} Mins • ${unitQuiz.questions.size} Qs",
                                         style = MaterialTheme.typography.bodySmall.copy(
                                             color = MaterialTheme.colorScheme.secondaryTextColor,
                                             fontWeight = FontWeight.SemiBold,

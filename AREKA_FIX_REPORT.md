@@ -58,6 +58,12 @@ Static validation completed:
 - Some achievement criteria (perfect-score streak, Biology mastery, and speed completion) do not yet have enough persisted source data to calculate honestly; they remain locked until those metrics are implemented.
 - The repository still contains the existing mock leaderboard data source; it is used for the in-app leaderboard presentation and is not a network-backed ranking service.
 
+## History quiz import
+
+The attached `History_Grade10_FullSubject_Quiz.html` was parsed and bundled into the offline curriculum as **900 questions across all 9 History units**: 70 multiple-choice and 30 fill-in-the-blank questions per unit. Fill-in answers are scored case-insensitively with normalized whitespace, displayed with a dedicated answer field, and included correctly in result breakdowns and mistake review records. The imported quizzes replace the older four-question History entries through the existing `CurriculumData.getQuizForUnit` lookup without changing navigation or requiring network access.
+
+Structural validation confirmed 9 imported quiz entries, 900 questions, 630 multiple-choice questions, 270 fill-in questions, and a successful curriculum-map wiring check. Kotlin compilation remains blocked only by the missing wrapper/toolchain documented above.
+
 ## Suggested commit message
 
 `Fix Areka study navigation and honest learner progress state`

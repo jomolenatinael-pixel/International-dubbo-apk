@@ -14,7 +14,7 @@ object QuizScoring {
     fun calculate(quiz: Quiz, answers: Map<Int, String>): QuizScore {
         val total = quiz.questions.size
         val correct = quiz.questions.count { question ->
-            answers[question.id] == question.correctOptionId
+            isCorrect(question, answers[question.id])
         }
         val answered = quiz.questions.count { answers.containsKey(it.id) }
         val skipped = (total - answered).coerceAtLeast(0)
@@ -29,4 +29,19 @@ object QuizScoring {
             pointsEarned = percentage * 10
         )
     }
+
+    fun isCorrect(question: Question, submitted: String?): Boolean {
+        if (submitted == null) return false
+        return if (question.type == QuestionType.FILL_IN_THE_BLANK) {
+            normalize(submitted) == normalize(question.correctOptionId)
+        } else {
+            submitted == question.correctOptionId
+        }
+    }
+
+    private fun normalize(value: String): String = value
+        .trim()
+        .lowercase()
+        .replace('’', '\'')
+        .replace(Regex("\\s+"), " ")
 }

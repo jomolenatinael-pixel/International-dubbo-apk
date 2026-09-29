@@ -5,6 +5,11 @@ data class QuestionOption(
     val text: String
 )
 
+enum class QuestionType {
+    MULTIPLE_CHOICE,
+    FILL_IN_THE_BLANK
+}
+
 data class Question(
     val id: Int,
     val questionNumber: Int,
@@ -12,7 +17,8 @@ data class Question(
     val text: String,
     val options: List<QuestionOption>,
     val correctOptionId: String,
-    val explanation: String
+    val explanation: String,
+    val type: QuestionType = QuestionType.MULTIPLE_CHOICE
 )
 
 data class Quiz(

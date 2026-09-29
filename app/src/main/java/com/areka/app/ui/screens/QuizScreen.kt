@@ -29,6 +29,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.areka.app.data.model.Question
+import com.areka.app.data.model.QuestionType
 import com.areka.app.data.model.Quiz
 import com.areka.app.data.model.QuizScore
 import com.areka.app.data.model.QuizScoring
@@ -132,6 +133,9 @@ fun QuizScreen(
     val totalQuestions = quiz.questions.size
     val safeIndex = currentQuestionIndex.coerceIn(0, (totalQuestions - 1).coerceAtLeast(0))
     val currentQuestion = quiz.questions.getOrNull(safeIndex) ?: quiz.questions.first()
+    var fillInAnswer by remember(currentQuestion.id, sessionKey) {
+        mutableStateOf(userAnswers[currentQuestion.id].orEmpty())
+    }
 
     val safeSeconds = secondsRemaining.coerceAtLeast(0)
     val minutes = safeSeconds / 60
@@ -149,12 +153,19 @@ fun QuizScreen(
             if (quizSubmitted && !hasRecordedResult && totalQuestions > 0) {
                 hasRecordedResult = true
                 val mistakes = quiz.questions.filter { question ->
-                    userAnswers[question.id] != question.correctOptionId
+                    !QuizScoring.isCorrect(question, userAnswers[question.id])
                 }.map { question ->
-                    val selected = question.options.find { it.id == userAnswers[question.id] }?.text
-                        ?: "Skipped"
-                    val correct = question.options.find { it.id == question.correctOptionId }?.text
-                        ?: question.correctOptionId
+                    val selected = if (question.type == QuestionType.FILL_IN_THE_BLANK) {
+                        userAnswers[question.id]?.ifBlank { "Skipped" } ?: "Skipped"
+                    } else {
+                        question.options.find { it.id == userAnswers[question.id] }?.text ?: "Skipped"
+                    }
+                    val correct = if (question.type == QuestionType.FILL_IN_THE_BLANK) {
+                        question.correctOptionId
+                    } else {
+                        question.options.find { it.id == question.correctOptionId }?.text
+                            ?: question.correctOptionId
+                    }
                     MistakeEntity(
                         quizId = quiz.id,
                         questionId = question.id,
@@ -384,7 +395,11 @@ fun QuizScreen(
                     border = androidx.compose.foundation.BorderStroke(1.dp, ElectricBlue.copy(alpha = 0.3f))
                 ) {
                     Text(
-                        text = "Multiple Choice",
+                        text = if (currentQuestion.type == QuestionType.FILL_IN_THE_BLANK) {
+                            "Fill in the Blank"
+                        } else {
+                            "Multiple Choice"
+                        },
                         style = MaterialTheme.typography.labelSmall.copy(
                             color = ElectricBlue,
                             fontWeight = FontWeight.SemiBold
@@ -414,94 +429,100 @@ fun QuizScreen(
                 }
             }
 
-            // Option Choices List
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                currentQuestion.options.forEach { option ->
-                    val isSelected = userAnswers[currentQuestion.id] == option.id
-                    val primaryAccent = if (LocalThemeIsDark.current) NeonCyan else ElectricBlue
+            if (currentQuestion.type == QuestionType.FILL_IN_THE_BLANK) {
+                OutlinedTextField(
+                    value = fillInAnswer,
+                    onValueChange = {
+                        fillInAnswer = it
+                        userAnswers[currentQuestion.id] = it
+                    },
+                    label = { Text("Your answer") },
+                    placeholder = { Text("Type your answer") },
+                    singleLine = true,
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("fill_in_answer")
+                )
+            } else {
+                // Option Choices List
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    currentQuestion.options.forEach { option ->
+                        val isSelected = userAnswers[currentQuestion.id] == option.id
+                        val primaryAccent = if (LocalThemeIsDark.current) NeonCyan else ElectricBlue
+                        val borderColor = if (isSelected) primaryAccent else MaterialTheme.colorScheme.outline
+                        val containerBg = if (isSelected) primaryAccent.copy(alpha = 0.12f)
+                        else MaterialTheme.colorScheme.surface
 
-                    val borderColor = if (isSelected) primaryAccent else MaterialTheme.colorScheme.outline
-                    val containerBg = if (isSelected) {
-                        primaryAccent.copy(alpha = 0.12f)
-                    } else {
-                        MaterialTheme.colorScheme.surface
-                    }
-
-                    Card(
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = containerBg),
-                        border = androidx.compose.foundation.BorderStroke(if (isSelected) 2.dp else 1.dp, borderColor),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable(
-                                role = Role.RadioButton,
-                                onClickLabel = "Select option ${option.id}: ${option.text}",
-                                onClick = {
-                                    userAnswers[currentQuestion.id] = option.id
-                                }
-                            )
-                            .testTag("option_${option.id}")
-                    ) {
-                        Row(
+                        Card(
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(containerColor = containerBg),
+                            border = androidx.compose.foundation.BorderStroke(if (isSelected) 2.dp else 1.dp, borderColor),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
+                                .clickable(
+                                    role = Role.RadioButton,
+                                    onClickLabel = "Select option ${option.id}: ${option.text}",
+                                    onClick = { userAnswers[currentQuestion.id] = option.id }
+                                )
+                                .testTag("option_${option.id}")
                         ) {
                             Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
                                 verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.weight(1f)
+                                horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(34.dp)
-                                        .clip(CircleShape)
-                                        .background(if (isSelected) primaryAccent else MaterialTheme.colorScheme.surfaceVariant)
-                                        .border(
-                                            1.dp,
-                                            if (isSelected) primaryAccent else MaterialTheme.colorScheme.outline,
-                                            CircleShape
-                                        ),
-                                    contentAlignment = Alignment.Center
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.weight(1f)
                                 ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(34.dp)
+                                            .clip(CircleShape)
+                                            .background(if (isSelected) primaryAccent else MaterialTheme.colorScheme.surfaceVariant)
+                                            .border(1.dp, if (isSelected) primaryAccent else MaterialTheme.colorScheme.outline, CircleShape),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = option.id,
+                                            style = MaterialTheme.typography.labelMedium.copy(
+                                                fontWeight = FontWeight.Bold,
+                                                color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface
+                                            )
+                                        )
+                                    }
+
+                                    Spacer(modifier = Modifier.width(14.dp))
                                     Text(
-                                        text = option.id,
-                                        style = MaterialTheme.typography.labelMedium.copy(
-                                            fontWeight = FontWeight.Bold,
-                                            color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface
+                                        text = option.text,
+                                        style = MaterialTheme.typography.bodyLarge.copy(
+                                            color = if (isSelected) primaryAccent else MaterialTheme.colorScheme.onBackground,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                                         )
                                     )
                                 }
 
-                                Spacer(modifier = Modifier.width(14.dp))
-
-                                Text(
-                                    text = option.text,
-                                    style = MaterialTheme.typography.bodyLarge.copy(
-                                        color = if (isSelected) primaryAccent else MaterialTheme.colorScheme.onBackground,
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                                    )
-                                )
-                            }
-
-                            if (isSelected) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(24.dp)
-                                        .clip(CircleShape)
-                                        .background(primaryAccent),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Check,
-                                        contentDescription = "Selected",
-                                        tint = Color.White,
-                                        modifier = Modifier.size(16.dp)
-                                    )
+                                if (isSelected) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(24.dp)
+                                            .clip(CircleShape)
+                                            .background(primaryAccent),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Check,
+                                            contentDescription = "Selected",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -686,7 +707,7 @@ fun QuizResultsView(
 
             quiz.questions.forEach { question ->
                 val userAnswer = userAnswers[question.id]
-                val isCorrect = userAnswer == question.correctOptionId
+                val isCorrect = QuizScoring.isCorrect(question, userAnswer)
 
                 Card(
                     shape = RoundedCornerShape(14.dp),
