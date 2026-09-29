@@ -36,7 +36,7 @@ create trigger set_areka_profiles_updated_at
 before update on public.profiles
 for each row execute function public.set_areka_updated_at();
 
--- Admin is derived from the verified Auth email, never from a client-provided password or role.
+-- Admin is server-owned; profile writes can never grant it.
 create or replace function public.set_areka_admin_flag()
 returns trigger
 language plpgsql
@@ -44,9 +44,7 @@ security invoker
 set search_path = public
 as $$
 begin
-  if lower(coalesce(new.email, '')) = 'natijommar@gmail.com' then
-    new.is_admin = true;
-  elsif tg_op = 'UPDATE' then
+  if tg_op = 'UPDATE' then
     new.is_admin = coalesce(old.is_admin, false);
   else
     new.is_admin = false;
@@ -59,6 +57,30 @@ drop trigger if exists set_areka_admin_flag on public.profiles;
 create trigger set_areka_admin_flag
 before insert or update on public.profiles
 for each row execute function public.set_areka_admin_flag();
+
+create table if not exists public.user_roles (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  role text not null check (role in ('admin', 'student')) default 'student',
+  created_at timestamptz not null default now()
+);
+
+alter table public.user_roles enable row level security;
+revoke all on public.user_roles from anon, authenticated;
+grant select on public.user_roles to authenticated;
+drop policy if exists "areka_roles_select_own" on public.user_roles;
+create policy "areka_roles_select_own" on public.user_roles
+for select to authenticated using (user_id = auth.uid());
+
+insert into public.user_roles (user_id, role)
+select id, 'admin' from auth.users
+where lower(coalesce(email, '')) = 'natijommar@gmail.com'
+on conflict (user_id) do update set role = 'admin';
+
+update public.profiles p
+set is_admin = exists (
+  select 1 from public.user_roles r
+  where r.user_id = p.id and r.role = 'admin'
+);
 
 -- New app-owned attempt table. The legacy public.attempts table is not reshaped.
 create table if not exists public.quiz_attempts (
@@ -111,12 +133,16 @@ begin
     coalesce(new.raw_user_meta_data ->> 'display_name', new.email, 'Student'),
     coalesce(new.raw_user_meta_data ->> 'display_name', new.email, 'Student'),
     'Grade 10',
-    lower(coalesce(new.email, '')) = 'natijommar@gmail.com'
+    false
   )
   on conflict (id) do update set
     email = coalesce(public.profiles.email, excluded.email),
     display_name = coalesce(nullif(public.profiles.display_name, ''), excluded.display_name),
     full_name = coalesce(nullif(public.profiles.full_name, ''), excluded.full_name);
+  insert into public.user_roles (user_id, role)
+  values (new.id, case when lower(coalesce(new.email, '')) = 'natijommar@gmail.com' then 'admin' else 'student' end)
+  on conflict (user_id) do update set role = case
+    when excluded.role = 'admin' then 'admin' else public.user_roles.role end;
   return new;
 end;
 $$;
@@ -151,10 +177,13 @@ declare
   admin boolean;
   auth_email text;
 begin
-  select email, lower(coalesce(email, '')) = 'natijommar@gmail.com'
+  select u.email, exists (
+      select 1 from public.user_roles r
+      where r.user_id = u.id and r.role = 'admin'
+    )
     into auth_email, admin
-  from auth.users
-  where id = auth.uid();
+  from auth.users u
+  where u.id = auth.uid();
 
   update public.profiles
   set email = coalesce(public.profiles.email, auth_email),

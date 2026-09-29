@@ -6,6 +6,7 @@ import com.areka.app.data.local.FlashcardProgressEntity
 import com.areka.app.data.local.FlashcardScheduleEntity
 import com.areka.app.data.local.MistakeEntity
 import com.areka.app.data.local.ReviewGrade
+import com.areka.app.data.local.ownerIdFlow
 import com.areka.app.data.model.*
 import com.areka.app.data.remote.SupabaseAuth
 import com.areka.app.data.remote.SupabaseCloudSync
@@ -16,6 +17,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.launch
 
 /**
@@ -69,7 +71,7 @@ object StudyRepository {
 
             // Forward recent activities into QuizRepository
             launch {
-                db.recentActivityDao().getRecentActivities().collectLatest { entities ->
+                ownerIdFlow().flatMapLatest { owner -> db.recentActivityDao().getRecentActivities(owner) }.collectLatest { entities ->
                     quizRepository.updateActivities(entities.map { it.toRecentActivity() })
                 }
             }

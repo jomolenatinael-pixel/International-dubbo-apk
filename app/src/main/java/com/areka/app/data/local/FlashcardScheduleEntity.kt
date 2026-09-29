@@ -1,25 +1,14 @@
 package com.areka.app.data.local
 
 import androidx.room.Entity
-import androidx.room.PrimaryKey
 
-enum class CardStatus {
-    NEW,
-    LEARNING,
-    REVIEW,
-    RELEARNING
-}
+enum class CardStatus { NEW, LEARNING, REVIEW, RELEARNING }
+enum class ReviewGrade { AGAIN, HARD, GOOD, EASY }
 
-enum class ReviewGrade {
-    AGAIN,
-    HARD,
-    GOOD,
-    EASY
-}
-
-@Entity(tableName = "flashcard_schedules")
+@Entity(tableName = "flashcard_schedules", primaryKeys = ["ownerUserId", "cardId"])
 data class FlashcardScheduleEntity(
-    @PrimaryKey val cardId: String,
+    val ownerUserId: String = GUEST_OWNER_ID,
+    val cardId: String,
     val subjectId: String,
     val unitId: String,
     val status: String = CardStatus.NEW.name,
@@ -33,9 +22,10 @@ data class FlashcardScheduleEntity(
     val updatedAtEpochMillis: Long = System.currentTimeMillis()
 )
 
-@Entity(tableName = "flashcard_review_logs")
+@Entity(tableName = "flashcard_review_logs", indices = [androidx.room.Index(value = ["ownerUserId", "reviewedAtEpochMillis"])])
 data class ReviewLogEntity(
-    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val ownerUserId: String = GUEST_OWNER_ID,
+    @androidx.room.PrimaryKey(autoGenerate = true) val id: Long = 0,
     val cardId: String,
     val unitId: String,
     val grade: String,

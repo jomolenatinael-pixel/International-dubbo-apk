@@ -21,11 +21,12 @@ The Android app reads these values into `BuildConfig`. It never needs or accepts
 ## 3. Authentication behavior
 
 - Guest mode remains fully usable without a network or account.
-- Profile contains email/password sign-in, account creation, and sign-out.
-- Supabase Auth sessions are persisted in app-private SharedPreferences and refreshed on startup.
+- Profile contains validated email/password sign-in, account creation with password confirmation, confirmation-email resend, password-recovery email, and sign-out.
+- Supabase Auth sessions start in a visible loading state, are persisted in app-private SharedPreferences, and are refreshed on startup. A transport outage keeps a real cached session for offline study; an invalid refresh token signs out.
+- Authenticated REST requests use one centralized client, retry one 401 after refresh, and never expose backend response text as user-facing errors.
 - Google OAuth is not enabled in this minimal phase; email/password is enabled in the connected project.
 - If email confirmation is enabled, account creation asks the learner to confirm their email before signing in.
-- `natijommar@gmail.com` is marked server-side with `profiles.is_admin = true` by the Auth trigger and current-user RPC. The Android UI derives the badge from the verified Auth email and displays **Admin**.
+- `natijommar@gmail.com` is seeded into the server-owned `user_roles` table. The current-user RPC copies that role to `profiles.is_admin`; Android displays **Admin** only after the RPC response, never from a client email check.
 
 ## 4. What is local vs cloud
 
@@ -38,6 +39,8 @@ The Android app reads these values into `BuildConfig`. It never needs or accepts
 | Flashcard schedule | Primary local state | Optional `flashcard_progress` backup table; sync hook reserved for the next pass |
 
 Cloud calls run on the IO dispatcher after local writes and never block quiz or flashcard screens. Profile conflict policy is **monotonic server-wins** for `total_points` and `streak_days`: sync uses the higher value. Guest leaderboard rows are intentionally empty rather than seeded with fictional students.
+
+Room tables holding profiles, attempts, mistakes, activities, flashcard schedules, progress, and review logs carry an `ownerUserId` and are queried with the current Auth user ID (or the explicit `guest` owner). Migration `5 -> 6` preserves existing local data under the guest owner and prevents account switching from exposing another account's study state.
 
 ## 5. Validation checklist
 

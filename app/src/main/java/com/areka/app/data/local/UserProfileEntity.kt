@@ -1,12 +1,12 @@
 package com.areka.app.data.local
 
 import androidx.room.Entity
-import androidx.room.PrimaryKey
 import com.areka.app.data.model.UserProfile
 
-@Entity(tableName = "user_profile")
+@Entity(tableName = "user_profile", primaryKeys = ["ownerUserId", "id"])
 data class UserProfileEntity(
-    @PrimaryKey val id: Int = 1,
+    val ownerUserId: String = GUEST_OWNER_ID,
+    val id: Int = 1,
     val name: String = "Student",
     val grade: String = "Grade 10",
     val streakDays: Int = 0,
@@ -30,6 +30,6 @@ data class UserProfileEntity(
     )
 
     companion object {
-        fun default(): UserProfileEntity = UserProfileEntity()
+        fun default(ownerUserId: String = GUEST_OWNER_ID): UserProfileEntity = UserProfileEntity(ownerUserId = ownerUserId)
     }
 }

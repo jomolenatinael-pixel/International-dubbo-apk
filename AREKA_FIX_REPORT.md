@@ -108,3 +108,18 @@ Verification:
 - Android unit tests: **31 tests passed**.
 - Debug APK: `app/build/outputs/apk/debug/app-debug.apk`, 18,046,164 bytes, APK v2 signature verified.
 - Live signup/sign-in/admin-row testing was not executed because no test password was provided and the Supabase SQL dashboard session was not authenticated in this sandbox. Apply the migration first, then test with user-provided credentials without committing them.
+
+
+## Authentication hardening and local account isolation
+
+- Replaced the eager `SignedOut` startup state with an explicit `Loading` state while the persisted session is restored.
+- Added synchronized token refresh and a single authenticated REST request path with one safe retry on HTTP 401. Transport failures preserve a real cached session for offline use; invalid refresh tokens clear the session.
+- Added password confirmation, validation, confirmation-email resend, and password-recovery email UI. Backend error bodies are mapped to safe user-facing messages rather than displayed raw.
+- Changed admin authorization to a server-owned `user_roles` table. The migration seeds `natijommar@gmail.com`, blocks profile writes from granting admin, and exposes the badge only after the authenticated RPC returns the server role.
+- Added `ownerUserId` to Room profiles, attempts, mistakes, recent activities, flashcard schedules, progress, and review logs. All DAO reads/writes are owner-filtered; migration `5 -> 6` preserves existing data under the explicit `guest` owner.
+
+Verification completed in this phase:
+
+- `./gradlew compileDebugKotlin --stacktrace` — passed; only non-blocking coroutine/migration parameter warnings remain.
+- `./gradlew testDebugUnitTest --stacktrace` — passed, 31 tests.
+- SQL migration was statically reviewed for rerunnable role/RLS setup. Live SQL execution and live account testing still require applying the migration in the connected Supabase project and using test credentials outside source control.

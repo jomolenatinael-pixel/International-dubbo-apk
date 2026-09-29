@@ -2,6 +2,8 @@ package com.areka.app.data.repository
 
 import com.areka.app.data.local.MistakeEntity
 import com.areka.app.data.local.StudyDao
+import com.areka.app.data.local.currentOwnerId
+import com.areka.app.data.local.ownerIdFlow
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -21,24 +23,20 @@ class MistakeRepository(
 
     fun attachDao(dao: StudyDao) {
         scope.launch {
-            dao.getOpenMistakes().collectLatest { mistakes ->
-                _openMistakes.value = mistakes
+            ownerIdFlow().collectLatest { owner ->
+                dao.getOpenMistakes(owner).collectLatest { mistakes -> _openMistakes.value = mistakes }
             }
         }
     }
 
     fun getOpenMistakes(): Flow<List<MistakeEntity>> =
-        studyDao()?.getOpenMistakes() ?: flowOf(emptyList())
+        studyDao()?.getOpenMistakes(currentOwnerId()) ?: flowOf(emptyList())
 
     fun markMistakeReviewed(quizId: String, questionId: Int) {
-        scope.launch {
-            studyDao()?.markMistakeReviewed(quizId, questionId)
-        }
+        scope.launch { studyDao()?.markMistakeReviewed(currentOwnerId(), quizId, questionId) }
     }
 
     fun markAllMistakesReviewed() {
-        scope.launch {
-            studyDao()?.markAllMistakesReviewed()
-        }
+        scope.launch { studyDao()?.markAllMistakesReviewed(currentOwnerId()) }
     }
 }

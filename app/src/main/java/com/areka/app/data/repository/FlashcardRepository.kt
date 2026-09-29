@@ -6,6 +6,8 @@ import com.areka.app.data.local.FlashcardProgressEntity
 import com.areka.app.data.local.FlashcardScheduleDao
 import com.areka.app.data.local.FlashcardScheduleEntity
 import com.areka.app.data.local.ReviewGrade
+import com.areka.app.data.local.currentOwnerId
+import com.areka.app.data.local.ownerIdFlow
 import com.areka.app.data.model.Flashcard
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -27,31 +29,24 @@ class FlashcardRepository(
 
     fun attachDao(dao: FlashcardScheduleDao) {
         scope.launch {
-            val count = dao.getScheduleCount()
-            if (count == 0) {
-                val now = System.currentTimeMillis()
-                val initialSchedules = CurriculumData.flashcards.map { card ->
-                    FlashcardScheduleEntity(
-                        cardId = card.id,
-                        subjectId = card.subjectId,
-                        unitId = card.unitId,
-                        status = CardStatus.NEW.name,
-                        dueAtEpochMillis = now,
-                        intervalDays = 0f,
-                        ease = 2.5f,
-                        repetitions = 0,
-                        lapses = 0,
-                        learningStepIndex = 0,
-                        lastReviewedAtEpochMillis = null,
-                        updatedAtEpochMillis = now
-                    )
+            ownerIdFlow().collectLatest { owner ->
+                if (dao.getScheduleCount(owner) == 0) {
+                    val now = System.currentTimeMillis()
+                    dao.insertAll(CurriculumData.flashcards.map { card ->
+                        FlashcardScheduleEntity(
+                            ownerUserId = owner,
+                            cardId = card.id,
+                            subjectId = card.subjectId,
+                            unitId = card.unitId,
+                            dueAtEpochMillis = now,
+                            updatedAtEpochMillis = now
+                        )
+                    })
                 }
-                dao.insertAll(initialSchedules)
-            }
-
-            dao.getAllSchedules().collectLatest { schedules ->
-                val now = System.currentTimeMillis()
-                _dueFlashcardsCount.value = schedules.count { it.dueAtEpochMillis <= now }
+                dao.getAllSchedules(owner).collectLatest { schedules ->
+                    val now = System.currentTimeMillis()
+                    _dueFlashcardsCount.value = schedules.count { it.dueAtEpochMillis <= now }
+                }
             }
         }
     }
@@ -59,51 +54,44 @@ class FlashcardRepository(
     fun getFlashcardsForUnit(unitId: String): List<Flashcard> = CurriculumData.getFlashcardsForUnit(unitId)
 
     fun getFlashcardProgressForUnit(unitId: String): Flow<List<FlashcardProgressEntity>> =
-        progressDao()?.getProgressForUnit(unitId) ?: flowOf(emptyList())
+        progressDao()?.getProgressForUnit(currentOwnerId(), unitId) ?: flowOf(emptyList())
 
     fun setFlashcardStatus(cardId: String, unitId: String, isKnown: Boolean) {
         scope.launch {
             progressDao()?.setCardProgress(
                 FlashcardProgressEntity(
+                    ownerUserId = currentOwnerId(),
                     cardId = cardId,
                     unitId = unitId,
-                    isKnown = isKnown,
-                    updatedAt = System.currentTimeMillis()
+                    isKnown = isKnown
                 )
             )
         }
     }
 
     fun getSchedulesForUnit(unitId: String): Flow<List<FlashcardScheduleEntity>> =
-        scheduleDao()?.getSchedulesForUnit(unitId) ?: flowOf(emptyList())
+        scheduleDao()?.getSchedulesForUnit(currentOwnerId(), unitId) ?: flowOf(emptyList())
 
     suspend fun ensureSchedulesForUnit(unitId: String): List<FlashcardScheduleEntity> {
         val dao = scheduleDao() ?: return emptyList()
+        val owner = currentOwnerId()
         val cards = CurriculumData.getFlashcardsForUnit(unitId)
-        val existing = dao.getSchedulesForUnitOnce(unitId)
+        val existing = dao.getSchedulesForUnitOnce(owner, unitId)
         val existingCardIds = existing.map { it.cardId }.toSet()
         val now = System.currentTimeMillis()
-
         val missing = cards.filter { it.id !in existingCardIds }
         if (missing.isNotEmpty()) {
-            val newSchedules = missing.map { card ->
+            dao.insertAll(missing.map { card ->
                 FlashcardScheduleEntity(
+                    ownerUserId = owner,
                     cardId = card.id,
                     subjectId = card.subjectId,
                     unitId = card.unitId,
-                    status = CardStatus.NEW.name,
                     dueAtEpochMillis = now,
-                    intervalDays = 0f,
-                    ease = 2.5f,
-                    repetitions = 0,
-                    lapses = 0,
-                    learningStepIndex = 0,
-                    lastReviewedAtEpochMillis = null,
                     updatedAtEpochMillis = now
                 )
-            }
-            dao.insertAll(newSchedules)
-            return dao.getSchedulesForUnitOnce(unitId)
+            })
+            return dao.getSchedulesForUnitOnce(owner, unitId)
         }
         return existing
     }
@@ -111,10 +99,11 @@ class FlashcardRepository(
     fun answerCard(cardId: String, grade: ReviewGrade, onAnswered: (() -> Unit)? = null) {
         scope.launch {
             val dao = scheduleDao() ?: return@launch
-            val schedule = dao.getScheduleForCard(cardId) ?: return@launch
+            val owner = currentOwnerId()
+            val schedule = dao.getScheduleForCard(owner, cardId) ?: return@launch
             val (updatedSchedule, log) = FlashcardScheduler.gradeCard(schedule, grade)
-            dao.insertOrUpdate(updatedSchedule)
-            dao.insertReviewLog(log)
+            dao.insertOrUpdate(updatedSchedule.copy(ownerUserId = owner))
+            dao.insertReviewLog(log.copy(ownerUserId = owner))
             onAnswered?.invoke()
         }
     }
@@ -122,7 +111,8 @@ class FlashcardRepository(
     fun resetUnitSchedules(unitId: String) {
         scope.launch {
             val dao = scheduleDao() ?: return@launch
-            dao.deleteSchedulesForUnit(unitId)
+            val owner = currentOwnerId()
+            dao.deleteSchedulesForUnit(owner, unitId)
             ensureSchedulesForUnit(unitId)
         }
     }

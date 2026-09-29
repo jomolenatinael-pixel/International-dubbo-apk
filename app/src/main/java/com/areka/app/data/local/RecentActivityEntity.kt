@@ -1,11 +1,13 @@
 package com.areka.app.data.local
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.areka.app.data.model.RecentActivity
 
-@Entity(tableName = "recent_activities")
+@Entity(tableName = "recent_activities", indices = [Index(value = ["ownerUserId", "timestamp"])])
 data class RecentActivityEntity(
+    val ownerUserId: String = GUEST_OWNER_ID,
     @PrimaryKey val id: String,
     val title: String,
     val subtitle: String,

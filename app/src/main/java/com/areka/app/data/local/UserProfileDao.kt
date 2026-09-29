@@ -8,18 +8,18 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface UserProfileDao {
-    @Query("SELECT * FROM user_profile WHERE id = 1 LIMIT 1")
-    fun getUserProfile(): Flow<UserProfileEntity?>
+    @Query("SELECT * FROM user_profile WHERE ownerUserId = :ownerUserId AND id = 1 LIMIT 1")
+    fun getUserProfile(ownerUserId: String): Flow<UserProfileEntity?>
 
-    @Query("SELECT * FROM user_profile WHERE id = 1 LIMIT 1")
-    suspend fun getUserProfileOnce(): UserProfileEntity?
+    @Query("SELECT * FROM user_profile WHERE ownerUserId = :ownerUserId AND id = 1 LIMIT 1")
+    suspend fun getUserProfileOnce(ownerUserId: String): UserProfileEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertOrUpdate(profile: UserProfileEntity)
 
-    @Query("UPDATE user_profile SET isDarkTheme = :isDark WHERE id = 1")
-    suspend fun updateTheme(isDark: Boolean)
+    @Query("UPDATE user_profile SET isDarkTheme = :isDark WHERE ownerUserId = :ownerUserId AND id = 1")
+    suspend fun updateTheme(ownerUserId: String, isDark: Boolean)
 
-    @Query("UPDATE user_profile SET name = :name, grade = :grade WHERE id = 1")
-    suspend fun updateNameAndGrade(name: String, grade: String)
+    @Query("UPDATE user_profile SET name = :name, grade = :grade WHERE ownerUserId = :ownerUserId AND id = 1")
+    suspend fun updateNameAndGrade(ownerUserId: String, name: String, grade: String)
 }

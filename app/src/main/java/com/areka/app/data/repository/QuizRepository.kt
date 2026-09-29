@@ -5,6 +5,7 @@ import com.areka.app.data.local.MistakeEntity
 import com.areka.app.data.local.QuizAttemptEntity
 import com.areka.app.data.local.RecentActivityEntity
 import com.areka.app.data.local.UserProfileEntity
+import com.areka.app.data.local.currentOwnerId
 import com.areka.app.data.model.Quiz
 import com.areka.app.data.model.QuizScore
 import com.areka.app.data.model.RecentActivity
@@ -40,8 +41,9 @@ class QuizRepository(
 
     suspend fun getUnitProgress(unitId: String): UnitProgress {
         val db = databaseProvider() ?: return UnitProgress(unitId, 0, 0, 0, 0, null)
-        val attempts = db.studyDao().getAttemptsForUnit(unitId)
-        val schedules = db.flashcardScheduleDao().getSchedulesForUnitOnce(unitId)
+        val owner = currentOwnerId()
+        val attempts = db.studyDao().getAttemptsForUnit(owner, unitId)
+        val schedules = db.flashcardScheduleDao().getSchedulesForUnitOnce(owner, unitId)
         val reviewed = schedules.count { it.repetitions > 0 || it.lastReviewedAtEpochMillis != null }
         val accuracy = if (attempts.isEmpty()) 0 else
             ((attempts.sumOf { it.correctAnswers }.toFloat() / attempts.sumOf { it.totalQuestions }.coerceAtLeast(1)) * 100).toInt()
@@ -76,8 +78,10 @@ class QuizRepository(
 
         scope.launch {
             val db = databaseProvider() ?: return@launch
-            val existing = db.userProfileDao().getUserProfileOnce() ?: UserProfileEntity.default()
+            val owner = currentOwnerId()
+            val existing = db.userProfileDao().getUserProfileOnce(owner) ?: UserProfileEntity.default(owner)
             val attempt = QuizAttemptEntity(
+                ownerUserId = owner,
                 id = "attempt_${quiz.id}_$now",
                 quizId = quiz.id,
                 quizTitle = quiz.title,
@@ -91,18 +95,18 @@ class QuizRepository(
             )
             db.studyDao().insertAttempt(attempt)
             if (mistakes.isNotEmpty()) {
-                db.studyDao().insertMistakes(mistakes)
+                db.studyDao().insertMistakes(mistakes.map { it.copy(ownerUserId = owner) })
             }
 
             val today = try { LocalDate.now().toEpochDay() } catch (_: Exception) { now / 86_400_000L }
             val lastActive = existing.lastActiveDateEpochDay
             val streak = StudyStreakCalculator.nextStreak(existing.streakDays, lastActive, today)
-            val attempts = db.studyDao().getAttemptCount()
+            val attempts = db.studyDao().getAttemptCount(owner)
             val points = existing.totalPoints + score.pointsEarned
             val profileWithUpdatedStats = existing.copy(
                 totalQuizzes = attempts,
-                averageScore = db.studyDao().getAverageScore(),
-                timeStudiedHours = (db.studyDao().getStudyTimeSeconds() / 3600L).toInt(),
+                averageScore = db.studyDao().getAverageScore(owner),
+                timeStudiedHours = (db.studyDao().getStudyTimeSeconds(owner) / 3600L).toInt(),
                 totalPoints = points,
                 streakDays = streak,
                 lastActiveDateEpochDay = today
@@ -116,6 +120,7 @@ class QuizRepository(
             db.userProfileDao().insertOrUpdate(saved)
             db.recentActivityDao().insert(
                 RecentActivityEntity(
+                    ownerUserId = owner,
                     id = activity.id,
                     title = activity.title,
                     subtitle = activity.subtitle,

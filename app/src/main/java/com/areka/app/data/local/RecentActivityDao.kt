@@ -8,8 +8,8 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface RecentActivityDao {
-    @Query("SELECT * FROM recent_activities ORDER BY timestamp DESC LIMIT 20")
-    fun getRecentActivities(): Flow<List<RecentActivityEntity>>
+    @Query("SELECT * FROM recent_activities WHERE ownerUserId = :ownerUserId ORDER BY timestamp DESC LIMIT 20")
+    fun getRecentActivities(ownerUserId: String): Flow<List<RecentActivityEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(activity: RecentActivityEntity)
@@ -17,6 +17,6 @@ interface RecentActivityDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(activities: List<RecentActivityEntity>)
 
-    @Query("SELECT COUNT(*) FROM recent_activities")
-    suspend fun getCount(): Int
+    @Query("SELECT COUNT(*) FROM recent_activities WHERE ownerUserId = :ownerUserId")
+    suspend fun getCount(ownerUserId: String): Int
 }

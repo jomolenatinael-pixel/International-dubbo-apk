@@ -6,9 +6,10 @@ import androidx.room.PrimaryKey
 
 @Entity(
     tableName = "quiz_attempts",
-    indices = [Index(value = ["unitId", "completedAtEpochMillis"])]
+    indices = [Index(value = ["ownerUserId", "unitId", "completedAtEpochMillis"])]
 )
 data class QuizAttemptEntity(
+    val ownerUserId: String = GUEST_OWNER_ID,
     @PrimaryKey val id: String,
     val quizId: String,
     val quizTitle: String,
@@ -23,10 +24,11 @@ data class QuizAttemptEntity(
 
 @Entity(
     tableName = "mistakes",
-    primaryKeys = ["quizId", "questionId"],
-    indices = [Index(value = ["unitId"])]
+    primaryKeys = ["ownerUserId", "quizId", "questionId"],
+    indices = [Index(value = ["ownerUserId", "unitId"])]
 )
 data class MistakeEntity(
+    val ownerUserId: String = GUEST_OWNER_ID,
     val quizId: String,
     val questionId: Int,
     val questionText: String,

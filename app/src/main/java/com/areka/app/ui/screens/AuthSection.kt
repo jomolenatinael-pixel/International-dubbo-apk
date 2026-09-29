@@ -35,10 +35,9 @@ import androidx.compose.ui.unit.dp
 import com.areka.app.data.remote.AuthState
 import com.areka.app.data.remote.SupabaseAuth
 import com.areka.app.data.remote.SupabaseCloudSync
-import com.areka.app.data.repository.StudyRepository
 import kotlinx.coroutines.launch
 
-private enum class AuthDialogMode { SIGN_IN, SIGN_UP }
+private enum class AuthDialogMode { SIGN_IN, SIGN_UP, RESET_PASSWORD }
 
 @Composable
 fun AuthSection(modifier: Modifier = Modifier) {
@@ -51,7 +50,6 @@ fun AuthSection(modifier: Modifier = Modifier) {
         if (user != null) {
             SupabaseCloudSync.drainPendingAttempts()
             SupabaseCloudSync.syncAdminFlag()
-            SupabaseCloudSync.syncProfile(StudyRepository.userProfile.value)
             SupabaseCloudSync.refreshLeaderboard()
         }
     }
@@ -96,7 +94,7 @@ fun AuthSection(modifier: Modifier = Modifier) {
                 AuthState.Loading -> {
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         CircularProgressIndicator(strokeWidth = 2.dp)
-                        Text("Connecting…", style = MaterialTheme.typography.bodyMedium)
+                        Text("Restoring cloud session…", style = MaterialTheme.typography.bodyMedium)
                     }
                 }
                 else -> {
@@ -120,11 +118,11 @@ fun AuthSection(modifier: Modifier = Modifier) {
         AuthDialog(
             mode = mode,
             onDismiss = { dialogMode = null },
+            onChangeMode = { dialogMode = it },
             onAuthenticated = {
                 dialogMode = null
                 scope.launch {
                     SupabaseCloudSync.syncAdminFlag()
-                    SupabaseCloudSync.syncProfile(StudyRepository.userProfile.value)
                     SupabaseCloudSync.refreshLeaderboard()
                 }
             }
@@ -136,21 +134,33 @@ fun AuthSection(modifier: Modifier = Modifier) {
 private fun AuthDialog(
     mode: AuthDialogMode,
     onDismiss: () -> Unit,
+    onChangeMode: (AuthDialogMode) -> Unit,
     onAuthenticated: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var confirmation by remember { mutableStateOf("") }
     var displayName by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
     var submitting by remember { mutableStateOf(false) }
+    val signUpMode = mode == AuthDialogMode.SIGN_UP
+    val resetMode = mode == AuthDialogMode.RESET_PASSWORD
 
     AlertDialog(
         onDismissRequest = { if (!submitting) onDismiss() },
-        title = { Text(if (mode == AuthDialogMode.SIGN_IN) "Sign in" else "Create account") },
+        title = {
+            Text(
+                when (mode) {
+                    AuthDialogMode.SIGN_IN -> "Sign in"
+                    AuthDialogMode.SIGN_UP -> "Create account"
+                    AuthDialogMode.RESET_PASSWORD -> "Reset password"
+                }
+            )
+        },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                if (mode == AuthDialogMode.SIGN_UP) {
+                if (signUpMode) {
                     OutlinedTextField(
                         value = displayName,
                         onValueChange = { displayName = it },
@@ -167,40 +177,89 @@ private fun AuthDialog(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                     modifier = Modifier.fillMaxWidth()
                 )
-                OutlinedTextField(
-                    value = password,
-                    onValueChange = { password = it },
-                    label = { Text("Password") },
-                    singleLine = true,
-                    visualTransformation = PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                    modifier = Modifier.fillMaxWidth()
-                )
-                if (error != null) Text(error!!, color = MaterialTheme.colorScheme.error)
+                if (!resetMode) {
+                    OutlinedTextField(
+                        value = password,
+                        onValueChange = { password = it },
+                        label = { Text("Password") },
+                        singleLine = true,
+                        visualTransformation = PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                if (signUpMode) {
+                    OutlinedTextField(
+                        value = confirmation,
+                        onValueChange = { confirmation = it },
+                        label = { Text("Confirm password") },
+                        singleLine = true,
+                        visualTransformation = PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                if (mode == AuthDialogMode.SIGN_IN) {
+                    TextButton(enabled = !submitting, onClick = { onChangeMode(AuthDialogMode.RESET_PASSWORD) }) {
+                        Text("Forgot password?")
+                    }
+                }
+                if (signUpMode && error?.startsWith("Account created") == true) {
+                    TextButton(enabled = !submitting, onClick = {
+                        submitting = true
+                        scope.launch {
+                            val result = SupabaseAuth.resendConfirmation(email)
+                            submitting = false
+                            error = result.exceptionOrNull()?.message
+                                ?: "Confirmation email sent. Check your inbox."
+                        }
+                    }) { Text("Resend confirmation email") }
+                }
                 Spacer(modifier = Modifier.height(2.dp))
             }
         },
         confirmButton = {
+            val valid = email.contains("@") &&
+                (resetMode || password.length >= 6) &&
+                (!signUpMode || confirmation == password)
             Button(
-                enabled = !submitting && email.contains("@") && password.length >= 6,
+                enabled = !submitting && valid,
                 onClick = {
                     submitting = true
                     error = null
                     scope.launch {
-                        val result = if (mode == AuthDialogMode.SIGN_IN) {
-                            SupabaseAuth.signIn(email, password)
-                        } else {
-                            SupabaseAuth.signUp(email, password, displayName)
+                        when (mode) {
+                            AuthDialogMode.SIGN_IN -> {
+                                SupabaseAuth.signIn(email, password).fold(
+                                    onSuccess = { submitting = false; onAuthenticated() },
+                                    onFailure = { submitting = false; error = it.message ?: "Something went wrong. Please try again." }
+                                )
+                            }
+                            AuthDialogMode.SIGN_UP -> {
+                                SupabaseAuth.signUp(email, password, confirmation, displayName).fold(
+                                    onSuccess = { submitting = false; onAuthenticated() },
+                                    onFailure = { submitting = false; error = it.message ?: "Something went wrong. Please try again." }
+                                )
+                            }
+                            AuthDialogMode.RESET_PASSWORD -> {
+                                SupabaseAuth.sendPasswordReset(email).fold(
+                                    onSuccess = { submitting = false; error = "Check your email for a password reset link." },
+                                    onFailure = { submitting = false; error = it.message ?: "Something went wrong. Please try again." }
+                                )
+                            }
                         }
-                        submitting = false
-                        result.fold(
-                            onSuccess = { onAuthenticated() },
-                            onFailure = { error = it.message ?: "Authentication failed" }
-                        )
                     }
                 }
-            ) { Text(if (submitting) "Please wait…" else "Continue") }
+            ) { Text(if (submitting) "Please wait…" else if (resetMode) "Send reset email" else "Continue") }
         },
-        dismissButton = { TextButton(enabled = !submitting, onClick = onDismiss) { Text("Cancel") } }
+        dismissButton = {
+            Row {
+                if (mode == AuthDialogMode.RESET_PASSWORD) {
+                    TextButton(enabled = !submitting, onClick = { onChangeMode(AuthDialogMode.SIGN_IN) }) { Text("Back to sign in") }
+                }
+                TextButton(enabled = !submitting, onClick = onDismiss) { Text("Cancel") }
+            }
+        }
     )
 }
