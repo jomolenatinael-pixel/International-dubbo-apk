@@ -340,7 +340,7 @@ object StudyRepository {
     val chemistryStoichiometryQuiz = CurriculumData.getQuizForUnit("chem_u1")
     val biologyPlantsQuiz = CurriculumData.getQuizForUnit("bio_u2")
 
-    val allQuizzes = listOf(mathRelationsQuiz, chemistryStoichiometryQuiz, biologyPlantsQuiz)
+    val allQuizzes: List<Quiz> = CurriculumData.quizzes
 
     private val _recentActivities = MutableStateFlow<List<RecentActivity>>(emptyList())
     val recentActivities: StateFlow<List<RecentActivity>> = _recentActivities.asStateFlow()

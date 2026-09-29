@@ -197,7 +197,11 @@ object CurriculumData {
         CurriculumQuizzesPart1.quizzes +
         CurriculumQuizzesPart2.quizzes +
         CurriculumQuizzesPart3.quizzes +
-        CurriculumHistoryQuizImport.quizzes
+        CurriculumHistoryQuizImport.quizzes +
+        CurriculumDriveQuestionBank.quizzes
+
+    val quizzes: List<Quiz>
+        get() = allQuizzesMap.values.toList()
 
     fun getUnitsForSubject(subjectId: String): List<SubjectUnit> {
         return units.filter { it.subjectId == subjectId }

@@ -64,6 +64,12 @@ The attached `History_Grade10_FullSubject_Quiz.html` was parsed and bundled into
 
 Structural validation confirmed 9 imported quiz entries, 900 questions, 630 multiple-choice questions, 270 fill-in questions, and a successful curriculum-map wiring check. Kotlin compilation remains blocked only by the missing wrapper/toolchain documented above.
 
+## Google Drive question-bank import
+
+Drive search found `molarum_grade10_complete_question_bank.json` in the **Molarum Grade 10 Question Bank — Ready for Import** folder. The file contains 720 Grade 10 questions covering Chemistry, Physics, and Biology: six units per subject and 40 questions per unit. The import preserves multiple-choice and true/false records as selectable options, while numerical and short-answer records use the existing fill-in answer flow. Two short-answer records had blank answer fields; their supplied explanations are used as canonical fallback answers so no imported record is silently lost or left with an empty key.
+
+The complete catalog is now exposed through `CurriculumData.quizzes`, used by `StudyRepository` for dashboard search, and wired into `getQuizForUnit` so the Drive bank replaces the smaller four-question unit quizzes. Validation confirmed 18 Drive quiz entries, 720 imported records, valid answer-to-option alignment for all 432 selectable questions, and no whitespace errors in the working tree. All Drive records are marked `ai_draft` in the source bank; the app keeps that content bundled offline but does not present the draft label in the learner UI.
+
 ## Suggested commit message
 
 `Fix Areka study navigation and honest learner progress state`
