@@ -30,6 +30,20 @@ object SupabaseCloudSync {
         if (appContext == null) appContext = context.applicationContext
     }
 
+    suspend fun syncAdminFlag(): Result<Boolean> = withContext(Dispatchers.IO) {
+        if (SupabaseAuth.state.value !is AuthState.SignedIn) {
+            return@withContext Result.failure(SyncException("Not authenticated"))
+        }
+        try {
+            val result = request("/rest/v1/rpc/sync_current_user_admin", "POST", JSONObject())
+            val rows = result as? JSONArray
+                ?: throw SyncException("Admin RPC returned an invalid response")
+            Result.success(rows.optJSONObject(0)?.optBoolean("is_admin", false) == true)
+        } catch (e: Exception) {
+            Result.failure(SyncException(e.message ?: "Admin sync failed", e))
+        }
+    }
+
     suspend fun syncProfile(profile: UserProfile): Result<Unit> = withContext(Dispatchers.IO) {
         val auth = SupabaseAuth.state.value as? AuthState.SignedIn
             ?: return@withContext Result.failure(SyncException("Not authenticated"))
@@ -42,9 +56,11 @@ object SupabaseCloudSync {
             val current = if (remote is JSONArray && remote.length() > 0) remote.getJSONObject(0) else JSONObject()
             val body = JSONObject()
                 .put("id", auth.user.id)
+                .put("email", auth.user.email)
                 .put("full_name", profile.name)
                 .put("display_name", profile.name)
                 .put("grade", profile.grade)
+                .put("is_admin", auth.user.isAdmin)
                 // Conflict policy: server wins only when its monotonic stats are higher.
                 .put("total_points", maxOf(profile.totalPoints, current.optInt("total_points", 0)))
                 .put("streak_days", maxOf(profile.streakDays, current.optInt("streak_days", 0)))

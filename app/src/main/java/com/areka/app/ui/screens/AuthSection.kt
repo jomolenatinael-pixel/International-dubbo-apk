@@ -17,6 +17,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -49,6 +50,7 @@ fun AuthSection(modifier: Modifier = Modifier) {
     LaunchedEffect(user?.id) {
         if (user != null) {
             SupabaseCloudSync.drainPendingAttempts()
+            SupabaseCloudSync.syncAdminFlag()
             SupabaseCloudSync.syncProfile(StudyRepository.userProfile.value)
             SupabaseCloudSync.refreshLeaderboard()
         }
@@ -66,7 +68,22 @@ fun AuthSection(modifier: Modifier = Modifier) {
             Text("Cloud account", style = MaterialTheme.typography.titleMedium)
             when (val state = authState) {
                 is AuthState.SignedIn -> {
-                    Text(state.user.displayName, style = MaterialTheme.typography.bodyLarge)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(state.user.displayName, style = MaterialTheme.typography.bodyLarge)
+                        if (state.user.isAdmin) {
+                            Surface(
+                                shape = RoundedCornerShape(50),
+                                color = MaterialTheme.colorScheme.primaryContainer
+                            ) {
+                                Text(
+                                    "Admin",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                )
+                            }
+                        }
+                    }
                     Text(state.user.email, style = MaterialTheme.typography.bodySmall)
                     Text(
                         "Your study stats sync when online. Guest study remains available offline.",
@@ -106,6 +123,7 @@ fun AuthSection(modifier: Modifier = Modifier) {
             onAuthenticated = {
                 dialogMode = null
                 scope.launch {
+                    SupabaseCloudSync.syncAdminFlag()
                     SupabaseCloudSync.syncProfile(StudyRepository.userProfile.value)
                     SupabaseCloudSync.refreshLeaderboard()
                 }

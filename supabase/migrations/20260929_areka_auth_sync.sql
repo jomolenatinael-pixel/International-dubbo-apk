@@ -10,6 +10,8 @@ alter table public.profiles add column if not exists grade text not null default
 alter table public.profiles add column if not exists streak_days integer not null default 0;
 alter table public.profiles add column if not exists total_points integer not null default 0;
 alter table public.profiles add column if not exists avatar_color text;
+alter table public.profiles add column if not exists email text;
+alter table public.profiles add column if not exists is_admin boolean not null default false;
 alter table public.profiles add column if not exists updated_at timestamptz not null default now();
 
 -- Keep full_name (the existing project column) and display_name compatible.
@@ -33,6 +35,30 @@ drop trigger if exists set_areka_profiles_updated_at on public.profiles;
 create trigger set_areka_profiles_updated_at
 before update on public.profiles
 for each row execute function public.set_areka_updated_at();
+
+-- Admin is derived from the verified Auth email, never from a client-provided password or role.
+create or replace function public.set_areka_admin_flag()
+returns trigger
+language plpgsql
+security invoker
+set search_path = public
+as $$
+begin
+  if lower(coalesce(new.email, '')) = 'natijommar@gmail.com' then
+    new.is_admin = true;
+  elsif tg_op = 'UPDATE' then
+    new.is_admin = coalesce(old.is_admin, false);
+  else
+    new.is_admin = false;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists set_areka_admin_flag on public.profiles;
+create trigger set_areka_admin_flag
+before insert or update on public.profiles
+for each row execute function public.set_areka_admin_flag();
 
 -- New app-owned attempt table. The legacy public.attempts table is not reshaped.
 create table if not exists public.quiz_attempts (
@@ -78,14 +104,17 @@ security definer
 set search_path = public
 as $$
 begin
-  insert into public.profiles (id, full_name, display_name, grade)
+  insert into public.profiles (id, email, full_name, display_name, grade, is_admin)
   values (
     new.id,
+    new.email,
     coalesce(new.raw_user_meta_data ->> 'display_name', new.email, 'Student'),
     coalesce(new.raw_user_meta_data ->> 'display_name', new.email, 'Student'),
-    'Grade 10'
+    'Grade 10',
+    lower(coalesce(new.email, '')) = 'natijommar@gmail.com'
   )
   on conflict (id) do update set
+    email = coalesce(public.profiles.email, excluded.email),
     display_name = coalesce(nullif(public.profiles.display_name, ''), excluded.display_name),
     full_name = coalesce(nullif(public.profiles.full_name, ''), excluded.full_name);
   return new;
@@ -109,6 +138,34 @@ create policy "areka_profiles_insert_own" on public.profiles
 for insert to authenticated with check (id = auth.uid());
 create policy "areka_profiles_update_own" on public.profiles
 for update to authenticated using (id = auth.uid()) with check (id = auth.uid());
+
+-- Allows the app to repair/confirm the current user's admin flag without trusting client role input.
+drop function if exists public.sync_current_user_admin();
+create or replace function public.sync_current_user_admin()
+returns table(is_admin boolean)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  admin boolean;
+  auth_email text;
+begin
+  select email, lower(coalesce(email, '')) = 'natijommar@gmail.com'
+    into auth_email, admin
+  from auth.users
+  where id = auth.uid();
+
+  update public.profiles
+  set email = coalesce(public.profiles.email, auth_email),
+      is_admin = coalesce(admin, false)
+  where id = auth.uid();
+
+  return query select coalesce(admin, false);
+end;
+$$;
+
+grant execute on function public.sync_current_user_admin() to authenticated;
 
 drop policy if exists "areka_attempts_select_own" on public.quiz_attempts;
 drop policy if exists "areka_attempts_insert_own" on public.quiz_attempts;

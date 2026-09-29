@@ -91,3 +91,20 @@ The complete catalog is now exposed through `CurriculumData.quizzes`, used by `S
 Inspection found a live schema conflict: the connected project already had `profiles` (`id`, `full_name`, `created_at`) and a legacy `attempts` table with a different shape, plus the public `quizzes`, `questions`, and `choices` question-bank tables. Per approval, the migration preserves the legacy tables, extends `profiles`, and creates app-owned `quiz_attempts`, `flashcard_progress`, and `areka_leaderboard` objects with RLS. The SQL is provided at `supabase/migrations/20260929_areka_auth_sync.sql`; the Supabase dashboard session was not authenticated in this sandbox, so it must be pasted into the project SQL Editor.
 
 Android integration is guest-first and uses no new dependency: `BuildConfig` reads `SUPABASE_URL` and `SUPABASE_ANON_KEY` from ignored `local.properties`; `SupabaseAuth` implements email/password sign-up, sign-in, sign-out, refresh-token session persistence, and offline-safe errors; `SupabaseCloudSync` uploads profile/quiz attempts after Room writes and refreshes the authenticated leaderboard. Profile shows auth controls and does not display fabricated guest ranks. Setup and architecture details are in `SUPABASE_SETUP.md`.
+
+## Admin/auth hardening and final build
+
+- Added `profiles.is_admin boolean not null default false`.
+- Added a server-side profile trigger and `sync_current_user_admin()` RPC that derive admin state from the verified Auth email. `natijommar@gmail.com` is the only admin email rule; no password is stored or hardcoded.
+- Added persisted `isAdmin` auth state and a Profile **Admin** badge.
+- Profile upserts now include the verified email, and first-login profile creation is covered by the Auth trigger.
+- Added offline quiz-attempt retry behavior and maintained guest access to Quiz/Flashcards.
+- Fixed the curriculum integrity test so imported fill-in questions are validated by canonical answer instead of requiring MC options.
+
+Verification:
+
+- Supabase Auth settings endpoint with the configured publishable key: reachable (`200`); email auth and signup are enabled.
+- Static admin/sync/credential checks: passed.
+- Android unit tests: **31 tests passed**.
+- Debug APK: `app/build/outputs/apk/debug/app-debug.apk`, 18,046,164 bytes, APK v2 signature verified.
+- Live signup/sign-in/admin-row testing was not executed because no test password was provided and the Supabase SQL dashboard session was not authenticated in this sandbox. Apply the migration first, then test with user-provided credentials without committing them.

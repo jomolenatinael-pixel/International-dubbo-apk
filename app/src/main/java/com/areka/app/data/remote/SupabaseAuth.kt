@@ -23,6 +23,8 @@ object SupabaseAuth {
     private const val USER_ID = "user_id"
     private const val EMAIL = "email"
     private const val DISPLAY_NAME = "display_name"
+    private const val IS_ADMIN = "is_admin"
+    private const val ADMIN_EMAIL = "natijommar@gmail.com"
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var appContext: Context? = null
@@ -42,7 +44,12 @@ object SupabaseAuth {
         val storedEmail = prefs.getString(EMAIL, null)
         if (accessToken != null && storedUserId != null && storedEmail != null) {
             _state.value = AuthState.SignedIn(
-                AuthUser(storedUserId, storedEmail, prefs.getString(DISPLAY_NAME, storedEmail) ?: storedEmail)
+                AuthUser(
+                    id = storedUserId,
+                    email = storedEmail,
+                    displayName = prefs.getString(DISPLAY_NAME, storedEmail) ?: storedEmail,
+                    isAdmin = prefs.getBoolean(IS_ADMIN, false) || storedEmail.equals(ADMIN_EMAIL, ignoreCase = true)
+                )
             )
         }
         if (!refreshToken.isNullOrBlank()) {
@@ -123,7 +130,8 @@ object SupabaseAuth {
             displayName = userJson?.optJSONObject("user_metadata")?.optString("display_name")
                 .orEmpty().ifBlank { fallbackUser?.displayName ?: userJson?.optString("email").orEmpty() }
         )
-        if (newAccess == null || user.id.isBlank()) {
+        val resolvedUser = user.copy(isAdmin = user.email.equals(ADMIN_EMAIL, ignoreCase = true))
+        if (newAccess == null || resolvedUser.id.isBlank()) {
             val message = if (json.optBoolean("email_confirmed_at", false).not()) {
                 "Account created. Check your email to confirm it, then sign in."
             } else {
@@ -140,9 +148,10 @@ object SupabaseAuth {
             ?.putString(USER_ID, user.id)
             ?.putString(EMAIL, user.email)
             ?.putString(DISPLAY_NAME, user.displayName)
+            ?.putBoolean(IS_ADMIN, resolvedUser.isAdmin)
             ?.apply()
-        _state.value = AuthState.SignedIn(user)
-        return Result.success(user)
+        _state.value = AuthState.SignedIn(resolvedUser)
+        return Result.success(resolvedUser)
     }
 
     private fun currentUser(): AuthUser? = when (val state = _state.value) {
@@ -198,7 +207,12 @@ object SupabaseAuth {
     } catch (_: Exception) { "Request failed" }
 }
 
-data class AuthUser(val id: String, val email: String, val displayName: String)
+data class AuthUser(
+    val id: String,
+    val email: String,
+    val displayName: String,
+    val isAdmin: Boolean = false
+)
 
 sealed interface AuthState {
     data object SignedOut : AuthState

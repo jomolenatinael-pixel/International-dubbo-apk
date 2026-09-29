@@ -25,6 +25,7 @@ The Android app reads these values into `BuildConfig`. It never needs or accepts
 - Supabase Auth sessions are persisted in app-private SharedPreferences and refreshed on startup.
 - Google OAuth is not enabled in this minimal phase; email/password is enabled in the connected project.
 - If email confirmation is enabled, account creation asks the learner to confirm their email before signing in.
+- `natijommar@gmail.com` is marked server-side with `profiles.is_admin = true` by the Auth trigger and current-user RPC. The Android UI derives the badge from the verified Auth email and displays **Admin**.
 
 ## 4. What is local vs cloud
 
@@ -47,3 +48,5 @@ Cloud calls run on the IO dispatcher after local writes and never block quiz or 
 - [ ] Complete a quiz while authenticated and online; verify a row in `quiz_attempts`.
 - [ ] Verify `profiles` points/streak update and `areka_leaderboard` appears in Profile.
 - [ ] Sign out; Profile returns to guest mode and local study remains available.
+- [ ] Sign up/sign in as `natijommar@gmail.com`; confirm the Profile **Admin** badge and `profiles.is_admin = true`.
+- [ ] Restart after sign-in; confirm the session and Admin badge persist.

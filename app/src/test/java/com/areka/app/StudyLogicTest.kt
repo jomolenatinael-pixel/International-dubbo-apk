@@ -287,11 +287,18 @@ class StudyLogicTest {
             for (q in quiz.questions) {
                 org.junit.Assert.assertTrue("Question ID in quiz ${quiz.id} must be positive", q.id > 0)
                 org.junit.Assert.assertFalse("Question text in quiz ${quiz.id} must not be blank", q.text.isBlank())
-                org.junit.Assert.assertTrue("Question in quiz ${quiz.id} must have at least 2 options", q.options.size >= 2)
-                org.junit.Assert.assertTrue(
-                    "Question in quiz ${quiz.id} correctOptionId (${q.correctOptionId}) must match one of options ${q.options.map { it.id }}",
-                    q.options.any { it.id == q.correctOptionId }
-                )
+                if (q.type == com.areka.app.data.model.QuestionType.MULTIPLE_CHOICE) {
+                    org.junit.Assert.assertTrue("Question in quiz ${quiz.id} must have at least 2 options", q.options.size >= 2)
+                    org.junit.Assert.assertTrue(
+                        "Question in quiz ${quiz.id} correctOptionId (${q.correctOptionId}) must match one of options ${q.options.map { it.id }}",
+                        q.options.any { it.id == q.correctOptionId }
+                    )
+                } else {
+                    org.junit.Assert.assertTrue(
+                        "Fill-in question in quiz ${quiz.id} must have a canonical answer",
+                        q.correctOptionId.isNotBlank()
+                    )
+                }
             }
         }
     }
