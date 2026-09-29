@@ -346,8 +346,7 @@ fun FlashcardsScreen(
                     onStartQuiz = {
                         val quiz = StudyRepository.getQuizForUnit(currentUnit.id)
                         onStartQuiz(quiz)
-                    },
-                    onDone = { isStudyingCards = false }
+                    }
                 )
             }
         }
@@ -359,8 +358,7 @@ fun InteractiveFlashcardDeck(
     cards: List<Flashcard>,
     unit: SubjectUnit,
     accentColor: Color,
-    onStartQuiz: () -> Unit,
-    onDone: () -> Unit
+    onStartQuiz: () -> Unit
 ) {
     if (cards.isEmpty()) {
         Box(
@@ -512,8 +510,7 @@ fun InteractiveFlashcardDeck(
                 cardsReviewedInSession = 0
             },
             onBrowseCards = { isBrowseMode = true },
-            onStartQuiz = onStartQuiz,
-            onDone = onDone
+            onStartQuiz = onStartQuiz
         )
         return
     }
@@ -554,7 +551,7 @@ fun InteractiveFlashcardDeck(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Unit ${unit.unitNumber} · Card ${cardsReviewedInSession + 1} of $initialQueueTotal",
+                    text = "${activeQueue.size} due in session",
                     style = MaterialTheme.typography.titleSmall.copy(
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onBackground
@@ -965,8 +962,7 @@ fun AnkiQueueCompleteView(
     schedules: List<FlashcardScheduleEntity>,
     onStudyAllAhead: () -> Unit,
     onBrowseCards: () -> Unit,
-    onStartQuiz: () -> Unit,
-    onDone: () -> Unit
+    onStartQuiz: () -> Unit
 ) {
     val now = System.currentTimeMillis()
     val nextDue = schedules.filter { it.dueAtEpochMillis > now }.minByOrNull { it.dueAtEpochMillis }
@@ -1124,18 +1120,13 @@ fun AnkiQueueCompleteView(
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        Button(
+        TextButton(
             onClick = onStartQuiz,
-            shape = RoundedCornerShape(14.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = accentColor),
-            modifier = Modifier.fillMaxWidth().height(48.dp)
+            modifier = Modifier.fillMaxWidth()
         ) {
-            Icon(Icons.Default.Quiz, contentDescription = null, modifier = Modifier.size(18.dp), tint = Color.Black)
+            Icon(Icons.Default.Quiz, contentDescription = null, modifier = Modifier.size(18.dp), tint = accentColor)
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Take unit quiz", color = Color.Black, fontWeight = FontWeight.Bold)
-        }
-        TextButton(onClick = onDone, modifier = Modifier.fillMaxWidth()) {
-            Text("Done", color = MaterialTheme.colorScheme.secondaryTextColor, fontWeight = FontWeight.SemiBold)
+            Text("Take Unit Multiple-Choice Quiz", color = accentColor, fontWeight = FontWeight.Bold)
         }
     }
 }

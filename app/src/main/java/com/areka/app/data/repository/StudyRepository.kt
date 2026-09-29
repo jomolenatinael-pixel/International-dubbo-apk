@@ -46,7 +46,7 @@ object StudyRepository {
             totalQuizzes = 0,
             averageScore = 0,
             timeStudiedHours = 0,
-            globalRank = 0,
+            globalRank = 10,
             totalPoints = 0
         )
     )
@@ -421,7 +421,7 @@ object StudyRepository {
             subtitle = "${quiz.title} - ${score.percentage}%",
             progressPercent = score.percentage,
             isCompleted = true,
-            iconType = "quiz|${quiz.subjectId ?: ""}|${quiz.unitId ?: ""}"
+            iconType = quiz.iconName
         )
         _recentActivities.value = listOf(activity) + _recentActivities.value.take(19)
 
@@ -453,7 +453,7 @@ object StudyRepository {
                 averageScore = db.studyDao().getAverageScore(),
                 timeStudiedHours = (db.studyDao().getStudyTimeSeconds() / 3600L).toInt(),
                 totalPoints = points,
-                globalRank = 0,
+                globalRank = if (points >= 94800) 1 else 2,
                 streakDays = streak,
                 lastActiveDateEpochDay = today
             )

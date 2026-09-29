@@ -30,10 +30,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.areka.app.data.model.DailyStreakBadge
 import com.areka.app.data.model.Quiz
 import com.areka.app.data.model.SubjectItem
 import com.areka.app.data.model.UserProfile
 import com.areka.app.data.repository.StudyRepository
+import com.areka.app.ui.components.GlowingBadgeItem
 import com.areka.app.ui.components.MistakesReviewDialog
 import com.areka.app.ui.components.UnitSelectionDialog
 import com.areka.app.ui.theme.*
@@ -53,6 +55,7 @@ fun DashboardScreen(
     val openMistakes by StudyRepository.openMistakes.collectAsStateWithLifecycle()
     var showReviewMistakesDialog by remember { mutableStateOf(false) }
 
+    val streakBadges = StudyRepository.streakBadges
     val subjects = StudyRepository.subjects
     val allQuizzes = StudyRepository.allQuizzes
 
@@ -97,7 +100,7 @@ fun DashboardScreen(
                             )
                         )
                         Text(
-                            text = "Grade 10 · New Curriculum",
+                            text = "${userProfile.grade} • Student",
                             style = MaterialTheme.typography.bodyMedium.copy(
                                 color = if (LocalThemeIsDark.current) NeonCyan else ElectricBlue,
                                 fontWeight = FontWeight.SemiBold
@@ -139,7 +142,7 @@ fun DashboardScreen(
                     onValueChange = onSearchQueryChange,
                     placeholder = {
                         Text(
-                            "Search subjects and quizzes...",
+                            "Search quizzes, periodic trends, algebra...",
                             color = MaterialTheme.colorScheme.secondaryTextColor,
                             fontSize = 14.sp
                         )
@@ -286,13 +289,10 @@ fun DashboardScreen(
             // Home "Today" Section: Continue last study + due flashcards count + start button
             item(key = "today_study_card") {
                 val lastActivity = activities.firstOrNull()
-                val activityParts = lastActivity?.iconType?.split("|") ?: emptyList()
-                val lastMode = activityParts.getOrNull(0) ?: "flashcards"
-                val lastStudySubject = subjects.find { it.id == activityParts.getOrNull(1) } ?: subjects.first()
-                val lastStudyUnit = StudyRepository.getUnitsForSubject(lastStudySubject.id)
-                    .find { it.id == activityParts.getOrNull(2) }
-                    ?: StudyRepository.getUnitsForSubject(lastStudySubject.id).firstOrNull()
-                val lastStudyTitle = lastActivity?.let { "${lastStudySubject.name} · ${lastStudyUnit?.title ?: it.subtitle}" }
+                val lastStudySubject = subjects.find { it.name.equals(lastActivity?.iconType, ignoreCase = true) }
+                    ?: subjects.first()
+                val lastStudyUnit = StudyRepository.getUnitsForSubject(lastStudySubject.id).firstOrNull()
+                val lastStudyTitle = lastActivity?.let { "${it.title}: ${it.subtitle}" }
                     ?: "${lastStudySubject.name}: ${lastStudyUnit?.title ?: "Unit 1"}"
 
                 Card(
@@ -343,7 +343,7 @@ fun DashboardScreen(
                                 }
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = "Your next study step",
+                                    text = "Daily Study Plan",
                                     style = MaterialTheme.typography.bodySmall.copy(
                                         color = MaterialTheme.colorScheme.secondaryTextColor,
                                         fontWeight = FontWeight.Medium
@@ -384,7 +384,7 @@ fun DashboardScreen(
 
                         // Continue Last Study Details
                         Text(
-                            text = if (lastActivity == null) "Start with Mathematics · Unit 1" else "Continue $lastStudyTitle",
+                            text = "Continue: $lastStudyTitle",
                             style = MaterialTheme.typography.titleMedium.copy(
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onBackground
@@ -393,7 +393,7 @@ fun DashboardScreen(
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = if (lastActivity == null) "Build your first study habit with a short unit session." else "Pick up where you left off.",
+                            text = "Pick up where you left off or tackle your due reviews.",
                             style = MaterialTheme.typography.bodySmall.copy(
                                 color = MaterialTheme.colorScheme.secondaryTextColor
                             )
@@ -404,9 +404,7 @@ fun DashboardScreen(
                         // Start Study Button
                         Button(
                             onClick = {
-                                if (lastStudyUnit != null && lastMode == "quiz") {
-                                    onStartQuiz(StudyRepository.getQuizForUnit(lastStudyUnit.id))
-                                } else if (lastStudyUnit != null) {
+                                if (lastStudyUnit != null) {
                                     onOpenFlashcards(lastStudySubject.id, lastStudyUnit.id)
                                 } else {
                                     onStartQuiz(allQuizzes.first())
@@ -421,7 +419,7 @@ fun DashboardScreen(
                         ) {
                             Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text(if (lastActivity == null) "Start with Mathematics · Unit 1" else "Continue", fontWeight = FontWeight.Bold)
+                            Text("Start Today's Study", fontWeight = FontWeight.Bold)
                         }
 
                         if (openMistakes.isNotEmpty()) {
@@ -444,47 +442,69 @@ fun DashboardScreen(
                 }
             }
 
-            // Due today: honest scheduler state, never fabricated progress.
-            item(key = "due_today_section") {
-                Card(
-                    shape = RoundedCornerShape(18.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                    modifier = Modifier.fillMaxWidth().testTag("due_today_card")
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Schedule, contentDescription = null, tint = AmberGold, modifier = Modifier.size(20.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Due today", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
-                        }
-                        Spacer(modifier = Modifier.height(6.dp))
+            // Recent Quizzes Row (History, Biology, Chemistry)
+            item(key = "recent_quizzes_section") {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Text(
-                            text = if (dueFlashcardsCount == 0) "You're clear for today." else "$dueFlashcardsCount flashcards are ready for review.",
-                            style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.secondaryTextColor)
+                            text = "Recent Quizzes",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onBackground
+                            )
                         )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        if (dueFlashcardsCount > 0) {
-                            Button(
-                                onClick = {
-                                    val subject = subjects.first()
-                                    val unit = StudyRepository.getUnitsForSubject(subject.id).firstOrNull()
-                                    if (unit != null) onOpenFlashcards(subject.id, unit.id)
-                                },
-                                shape = RoundedCornerShape(12.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = if (LocalThemeIsDark.current) NeonCyan else ElectricBlue),
-                                modifier = Modifier.fillMaxWidth().height(46.dp).testTag("review_due_button")
-                            ) { Text("Review due cards", fontWeight = FontWeight.Bold) }
-                        } else {
-                            OutlinedButton(
-                                onClick = { selectedSubjectForUnits = subjects.firstOrNull() },
-                                shape = RoundedCornerShape(12.dp),
-                                modifier = Modifier.fillMaxWidth().height(46.dp)
-                            ) { Text("Pick a unit to learn something new") }
+
+                        TextButton(
+                            onClick = { selectedSubjectForUnits = subjects.firstOrNull() }
+                        ) {
+                            Text(
+                                text = "View All",
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    color = if (LocalThemeIsDark.current) NeonCyan else ElectricBlue,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            )
                         }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        RecentQuizMiniCard(
+                            title = "History",
+                            scoreText = "85% Avg",
+                            accentColor = AmberGold,
+                            icon = Icons.Default.AccountBalance,
+                            modifier = Modifier.weight(1f),
+                            onClick = { selectedSubjectForUnits = subjects.find { it.id == "history" } }
+                        )
+                        RecentQuizMiniCard(
+                            title = "Biology",
+                            scoreText = "92% Avg",
+                            accentColor = EmeraldGreen,
+                            icon = Icons.Default.Biotech,
+                            modifier = Modifier.weight(1f),
+                            onClick = { selectedSubjectForUnits = subjects.find { it.id == "biology" } }
+                        )
+                        RecentQuizMiniCard(
+                            title = "Chemistry",
+                            scoreText = "Active",
+                            accentColor = if (LocalThemeIsDark.current) NeonCyan else ElectricBlue,
+                            icon = Icons.Default.Science,
+                            modifier = Modifier.weight(1f),
+                            onClick = { selectedSubjectForUnits = subjects.find { it.id == "chemistry" } }
+                        )
                     }
                 }
             }
+
             // Subject Overview Grid (All 9 subjects)
             item(key = "subjects_section") {
                 Column(modifier = Modifier.fillMaxWidth()) {
@@ -520,8 +540,198 @@ fun DashboardScreen(
                     }
                 }
             }
+
+            // Daily Streak Section
+            item(key = "daily_streak_section") {
+                Card(
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("daily_streak_section")
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Daily Streak",
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onBackground
+                                )
+                            )
+
+                            Text(
+                                text = if (userProfile.streakDays > 0) "${userProfile.streakDays}-Day Streak!" else "Start Your Streak!",
+                                style = MaterialTheme.typography.labelMedium.copy(
+                                    color = AmberGold,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Circular Streak indicator
+                            Box(
+                                modifier = Modifier
+                                    .size(72.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        Brush.radialGradient(
+                                            listOf(
+                                                AmberGold.copy(alpha = 0.25f),
+                                                MaterialTheme.colorScheme.surfaceVariant
+                                            )
+                                        )
+                                    )
+                                    .border(2.dp, AmberGold, CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(
+                                        text = "${userProfile.streakDays}",
+                                        style = MaterialTheme.typography.titleLarge.copy(
+                                            fontWeight = FontWeight.Black,
+                                            color = AmberGold
+                                        )
+                                    )
+                                    Text(
+                                        text = "DAYS",
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            fontSize = 9.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.secondaryTextColor
+                                        )
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.width(16.dp))
+
+                            // Glowing badges row
+                            LazyRow(
+                                modifier = Modifier.weight(1f),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                items(streakBadges, key = { it.title }) { badge ->
+                                    GlowingBadgeItem(
+                                        title = badge.title,
+                                        days = badge.daysRequired,
+                                        color = Color(badge.colorHex),
+                                        isUnlocked = badge.isUnlocked
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Recommendations Card
+            item(key = "recommendation_section") {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = "Recommendations",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onBackground
+                        )
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Card(
+                        shape = RoundedCornerShape(18.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, NeonPurple.copy(alpha = 0.4f)),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(
+                                role = Role.Button,
+                                onClickLabel = "Start Algebra Review Quiz"
+                            ) { onStartQuiz(StudyRepository.algebraReviewQuiz) }
+                            .testTag("recommended_quiz_card")
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(46.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(NeonPurple.copy(alpha = 0.2f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Calculate,
+                                        contentDescription = "Math icon",
+                                        tint = NeonPurple,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.width(12.dp))
+
+                                Column {
+                                    Text(
+                                        text = "Algebra Review Quiz",
+                                        style = MaterialTheme.typography.titleSmall.copy(
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onBackground
+                                        )
+                                    )
+                                    Text(
+                                        text = "Grade 10 • 3 Questions • 12 mins",
+                                        style = MaterialTheme.typography.bodySmall.copy(
+                                            color = MaterialTheme.colorScheme.secondaryTextColor,
+                                            fontSize = 11.sp
+                                        )
+                                    )
+                                }
+                            }
+
+                            IconButton(
+                                onClick = { onStartQuiz(StudyRepository.algebraReviewQuiz) },
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .clip(CircleShape)
+                                    .background(NeonPurple)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.PlayArrow,
+                                    contentDescription = "Start Algebra Quiz",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
+
     selectedSubjectForUnits?.let { selectedSubject ->
         UnitSelectionDialog(
             subject = selectedSubject,
