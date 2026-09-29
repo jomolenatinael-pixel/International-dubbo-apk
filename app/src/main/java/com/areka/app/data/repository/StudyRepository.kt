@@ -400,13 +400,16 @@ object StudyRepository {
     fun getUserRankSublist(userPoints: Int): List<LeaderboardEntry> =
         getUserRankSublist(_userProfile.value.copy(totalPoints = userPoints))
 
-    val userAchievements = listOf(
-        Achievement("ach1", "Quiz Master", "Complete 100+ quizzes across all STEM subjects", "trophy", true),
-        Achievement("ach2", "Perfect Score", "Attain 100% accuracy on 10 consecutive tests", "star", true),
-        Achievement("ach3", "Biology Expert", "Master all Grade 10 cellular biology units", "leaf", true),
-        Achievement("ach4", "Speed Demon", "Finish a timed quiz in under 3 minutes with >90% score", "lightning", true),
-        Achievement("ach5", "Streak Champion", "Maintain an unbroken daily streak of 60 days", "flame", false)
+    fun getUserAchievements(profile: UserProfile): List<Achievement> = listOf(
+        Achievement("ach1", "Quiz Master", "Complete 100+ quizzes across all STEM subjects", "trophy", profile.totalQuizzes >= 100),
+        Achievement("ach2", "Perfect Score", "Attain 100% accuracy on 10 consecutive tests", "star", false),
+        Achievement("ach3", "Biology Expert", "Master all Grade 10 cellular biology units", "leaf", false),
+        Achievement("ach4", "Speed Demon", "Finish a timed quiz in under 3 minutes with >90% score", "lightning", false),
+        Achievement("ach5", "Streak Champion", "Maintain an unbroken daily streak of 60 days", "flame", profile.streakDays >= 60)
     )
+
+    val userAchievements: List<Achievement>
+        get() = getUserAchievements(_userProfile.value)
 
     fun recordQuizResult(
         quiz: Quiz,
@@ -448,15 +451,22 @@ object StudyRepository {
             val streak = StudyStreakCalculator.nextStreak(existing.streakDays, lastActive, today)
             val attempts = db.studyDao().getAttemptCount()
             val points = existing.totalPoints + score.pointsEarned
-            val saved = existing.copy(
+            val profileWithUpdatedStats = existing.copy(
                 totalQuizzes = attempts,
                 averageScore = db.studyDao().getAverageScore(),
                 timeStudiedHours = (db.studyDao().getStudyTimeSeconds() / 3600L).toInt(),
                 totalPoints = points,
-                globalRank = if (points >= 94800) 1 else 2,
                 streakDays = streak,
                 lastActiveDateEpochDay = today
             )
+            // Persist the same rank that Profile displays instead of assigning
+            // rank 2 to every learner who is not at the top score.
+            val computedRank = leaderboardRepository
+                .global(profileWithUpdatedStats.toUserProfile())
+                .firstOrNull { it.isCurrentUser }
+                ?.rank
+                ?: profileWithUpdatedStats.globalRank
+            val saved = profileWithUpdatedStats.copy(globalRank = computedRank)
             db.userProfileDao().insertOrUpdate(saved)
             db.recentActivityDao().insert(RecentActivityEntity(
                 id = activity.id, title = activity.title, subtitle = activity.subtitle,

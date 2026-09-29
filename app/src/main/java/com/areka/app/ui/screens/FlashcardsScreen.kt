@@ -65,19 +65,20 @@ fun FlashcardsScreen(
     }
 
     var selectedUnitId by remember(initialUnitId, selectedSubjectId) {
-        mutableStateOf(initialUnitId ?: unitsForSubject.firstOrNull()?.id)
+        mutableStateOf(initialUnitId)
     }
 
-    val currentUnit = unitsForSubject.find { it.id == selectedUnitId } ?: unitsForSubject.firstOrNull()
+    val currentUnit = unitsForSubject.find { it.id == selectedUnitId }
 
     // Mode: if a unit is selected, show Study Flashcards view, otherwise show Unit selection list
-    var isStudyingCards by remember(selectedUnitId) {
-        mutableStateOf(selectedUnitId != null)
+    var isStudyingCards by remember(initialSubjectId, initialUnitId) {
+        mutableStateOf(initialUnitId != null)
     }
 
     BackHandler {
-        if (isStudyingCards && unitsForSubject.size > 1) {
+        if (isStudyingCards) {
             isStudyingCards = false
+            selectedUnitId = null
         } else {
             onBack()
         }
@@ -105,6 +106,7 @@ fun FlashcardsScreen(
                             onClick = {
                                 if (isStudyingCards) {
                                     isStudyingCards = false
+                                    selectedUnitId = null
                                 } else {
                                     onBack()
                                 }
@@ -188,8 +190,10 @@ fun FlashcardsScreen(
                                 role = Role.Tab,
                                 onClick = {
                                     selectedSubjectId = subject.id
-                                    val newUnits = StudyRepository.getUnitsForSubject(subject.id)
-                                    selectedUnitId = newUnits.firstOrNull()?.id
+                                    // Keep the required Subject -> Unit flow: changing subject
+                                    // must not silently open the first unit.
+                                    selectedUnitId = null
+                                    isStudyingCards = false
                                 }
                             )
                             .testTag("subject_tab_${subject.id}")

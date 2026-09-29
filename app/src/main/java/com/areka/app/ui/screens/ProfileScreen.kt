@@ -384,7 +384,7 @@ fun ProfileScreen(
                                     )
                                 )
                                 Text(
-                                    text = "#${userProfile.globalRank}",
+                                    text = if (userProfile.totalPoints > 0) "#${userProfile.globalRank}" else "—",
                                     style = MaterialTheme.typography.titleLarge.copy(
                                         fontWeight = FontWeight.Bold,
                                         color = primaryAccent
