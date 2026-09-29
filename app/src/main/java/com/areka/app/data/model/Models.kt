@@ -103,7 +103,7 @@ data class Achievement(
     val title: String,
     val description: String,
     val iconType: String,
-    val unlocked: Boolean = true
+    val unlocked: Boolean = false
 )
 
 data class RecentActivity(

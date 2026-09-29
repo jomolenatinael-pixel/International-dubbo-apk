@@ -1,68 +1,58 @@
-# International Dubbo APK
+# International Dubbo APK (Areka Study Suite)
 
-**International Dubbo APK** is an Android learning application built with Kotlin and Jetpack Compose. The project currently uses the internal application branding **Areka Study Suite** and provides interactive study, quiz, flashcard, progress-tracking, and leaderboard experiences.
+**International Dubbo APK** is an Android offline-first learning platform built with Kotlin and Jetpack Compose. The application uses the internal package identifier `com.areka.app` and provides interactive study, quiz, flashcard spaced-repetition, mistake review, and learner progress tracking for the official Grade 10 curriculum.
 
 ## Features
 
-- Dashboard with recent study activity and progress
-- Subject and unit selection for Grade 10 curriculum content
-- Interactive quizzes with answers, explanations, scoring, and results
-- Flashcards with local progress tracking and spaced-review scheduling
-- User profile, streaks, points, rankings, and leaderboard views
-- Light and dark theme support
-- Local persistence with Room database
-- Offline-first local study data and progress tracking
-- Compose UI screenshot and unit/instrumentation test setup
+- **Dashboard:** "Today's Study" overview, continue last study session, flashcard review queue count, and mistake review access.
+- **Subject & Unit Navigation:** 9 official Grade 10 subjects (Mathematics, Physics, Chemistry, Biology, Geography, Civics, Economics, History, Information Technology) with 66 curriculum units.
+- **Curriculum Quizzes:** Hand-authored and curriculum-aligned unit quizzes with immediate scoring, answer explanations, time tracking, and mistake recording.
+- **Flashcard Spaced Repetition:** SM-2 inspired Leitner/spaced-repetition scheduler with 4 response ratings (`Again`, `Hard`, `Good`, `Easy`), persistent review intervals, and due-card queues.
+- **Mistake Tracking & Review:** Open mistakes from quizzes are automatically recorded in Room database and can be reviewed and cleared individually or in bulk.
+- **Profile & Achievements:** Real-time learner statistics (points, quizzes completed, average accuracy, streak days). Achievements and daily streak badges are calculated honestly based on user activity rather than hardcoded unlocks.
+- **Leaderboards:** Local deterministic leaderboard calculating user rank dynamically from actual points, with an extensible `LeaderboardDataSource` interface prepared for remote Supabase integration.
+- **Theming:** Full Material Design 3 light and dark theme support.
+- **Offline-First Resilience:** All learning content, flashcards, attempts, schedules, and profile state are persisted locally via Room database.
 
 ## Technology stack
 
-- Kotlin
-- Jetpack Compose and Material 3
-- Android Gradle Plugin and Gradle Kotlin DSL
-- Android SDK 36.1
-- Minimum Android API 24
-- Target Android API 36
-- Room for local data persistence
-- Kotlin Coroutines and Flow
-- Retrofit, OkHttp, Moshi, and Coil
-- Firebase AI, App Check, and Google Services plugins
-- Robolectric and Roborazzi test tooling
+- **Language:** Kotlin 2.1.10
+- **UI Framework:** Jetpack Compose & Material 3 (Compose BOM 2025.02.00)
+- **Architecture:** MVVM / Clean Repository Pattern (Domain-focused repositories: `QuizRepository`, `FlashcardRepository`, `ProfileRepository`, `MistakeRepository`, `LeaderboardRepository`)
+- **Persistence:** Room 2.7.0-alpha13 (SQLite) with Kotlin Symbol Processing (KSP)
+- **Concurrency:** Kotlin Coroutines & StateFlow / Flow
+- **Remote Sync Architecture:** `RemoteQuestionDataSource` interface with `SupabaseQuestionSync` client using structured `SyncResult` (`Success`, `Cached`, `NetworkError`, `ServerError`, `ParseError`, `AuthError`), backed by local JSON cache
+- **Build System:** Gradle 9.3.1 with Android Gradle Plugin 9.1.1
+- **Target SDK:** Android 36 (VanillaIceCream / Android 15/16)
+- **Minimum SDK:** Android API 24 (Android 7.0 Nougat)
+- **Testing:** Local JVM testing with JUnit 4, Robolectric, and Roborazzi screenshot verification
 
 ## Project structure
 
 ```text
 app/src/main/java/com/areka/app/
 ├── data/
-│   ├── local/                 # Room database, entities, and DAOs
-│   ├── model/                 # Domain models
-│   └── repository/            # Curriculum data, study repository, scheduler
+│   ├── local/                 # Room database (AppDatabase), entities, DAOs, migrations
+│   ├── model/                 # Domain data models (Quiz, Flashcard, UserProfile, etc.)
+│   ├── remote/                # Remote sync abstractions (SyncResult, SupabaseQuestionSync)
+│   └── repository/            # Domain repositories (QuizRepository, FlashcardRepository,
+│                              # ProfileRepository, MistakeRepository, LeaderboardRepository,
+│                              # AchievementCalculator, CurriculumData, StudyRepository facade)
 ├── ui/
-│   ├── components/            # Navigation and reusable Compose components
-│   ├── screens/               # Dashboard, quiz, flashcard, profile, leaderboard
-│   ├── theme/                 # Colors, typography, and app theme
-│   └── viewmodel/             # App state and UI logic
+│   ├── components/            # Navigation, dialogs (MistakesReviewDialog), cards, buttons
+│   ├── screens/               # DashboardScreen, QuizScreen, FlashcardsScreen, ProfileScreen
+│   ├── theme/                 # Material 3 ColorScheme, Typography, Shapes, Theme
+│   └── viewmodel/             # App state and UI coordination
 ├── ArekaApplication.kt
 └── MainActivity.kt
 ```
 
 ## Requirements
 
-- Android Studio with Android SDK 36.1 or a compatible Android build environment
-- JDK 11
+- Android Studio Meerkat or newer / compatible Android CLI build environment
+- **JDK 17** (mandatory toolchain requirement)
+- Android SDK 36
 - Android device or emulator running API 24 or later
-- Any future remote-service configuration should be added through the project’s secret-management workflow
-
-## Configuration
-
-Never commit API keys, passwords, signing keys, `google-services.json`, or other private credentials to Git.
-
-Release signing values are read from environment variables when building a release APK:
-
-- `KEYSTORE_PATH`
-- `STORE_PASSWORD`
-- `KEY_PASSWORD`
-
-The key alias is configured as `upload` in `app/build.gradle.kts`.
 
 ## Build and test
 
@@ -70,34 +60,17 @@ From the repository root:
 
 ```bash
 # Build the debug APK
-./gradlew assembleDebug
+gradle assembleDebug
 
-# Run JVM unit tests
-./gradlew test
+# Run local JVM unit & Robolectric tests
+gradle :app:testDebugUnitTest
 
-# Run Android lint checks
-./gradlew lint
-
-# Run all configured verification tasks
-./gradlew check
+# Run verification checks
+gradle check
 ```
 
-The debug APK is generated under:
+## Application metadata
 
-```text
-app/build/outputs/apk/debug/app-debug.apk
-```
-
-## Git workflow
-
-```bash
-git clone https://github.com/jomolenatinael-pixel/International-dubbo-apk.git
-cd International-dubbo-apk
-git checkout main
-```
-
-Create a feature branch for changes, run the relevant checks, and open a pull request or push directly to `main` when appropriate.
-
-## Project status
-
-This repository is an active Android Studio project. The app identifier is currently `com.aistudio.areka.kpmzq`, while the source namespace is `com.areka.app`.
+- **Application ID:** `com.areka.app`
+- **Namespace:** `com.areka.app`
+- **Build Type:** Debug & Release signing configurations configured for container and CI/CD environments.

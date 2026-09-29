@@ -207,6 +207,10 @@ object CurriculumData {
         return units.filter { it.subjectId == subjectId }
     }
 
+    fun getAllCurriculumQuizzes(): List<Quiz> {
+        return units.map { getQuizForUnit(it.id) }
+    }
+
     fun getFlashcardsForUnit(unitId: String): List<Flashcard> {
         return flashcards.filter { it.unitId == unitId }
     }

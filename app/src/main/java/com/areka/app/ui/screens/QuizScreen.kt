@@ -110,6 +110,8 @@ fun QuizScreen(
     // Map from questionId to selectedOptionId
     val userAnswers = remember(quiz.id, sessionKey) { mutableStateMapOf<Int, String>() }
     var quizSubmitted by remember(quiz.id, sessionKey) { mutableStateOf(false) }
+    var isTimedOut by remember(quiz.id, sessionKey) { mutableStateOf(false) }
+    var showConfirmSubmitDialog by remember(quiz.id, sessionKey) { mutableStateOf(false) }
     var hasRecordedResult by remember(quiz.id, sessionKey) { mutableStateOf(false) }
 
     // Countdown timer properly keyed
@@ -125,6 +127,7 @@ fun QuizScreen(
                 secondsRemaining--
             }
             if (secondsRemaining <= 0 && !quizSubmitted) {
+                isTimedOut = true
                 quizSubmitted = true
             }
         }
@@ -194,10 +197,18 @@ fun QuizScreen(
             pointsEarned = pointsEarned,
             userAnswers = userAnswers,
             onRetake = {
+                currentQuestionIndex = 0
+                hasRecordedResult = false
+                quizSubmitted = false
+                isTimedOut = false
+                secondsRemaining = initialSeconds
+                isTimerRunning = true
+                userAnswers.clear()
                 sessionKey++
             },
             onBackToDashboard = onBack,
-            onOpenFlashcards = onOpenFlashcards
+            onOpenFlashcards = onOpenFlashcards,
+            isTimedOut = isTimedOut
         )
         return
     }
@@ -328,7 +339,14 @@ fun QuizScreen(
 
                     if (currentQuestionIndex == totalQuestions - 1) {
                         Button(
-                            onClick = { quizSubmitted = true },
+                            onClick = {
+                                val unanswered = quiz.questions.count { userAnswers[it.id] == null }
+                                if (unanswered > 0) {
+                                    showConfirmSubmitDialog = true
+                                } else {
+                                    quizSubmitted = true
+                                }
+                            },
                             shape = RoundedCornerShape(12.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = EmeraldGreen,
@@ -594,6 +612,45 @@ fun QuizScreen(
             Spacer(modifier = Modifier.height(20.dp))
         }
     }
+
+    if (showConfirmSubmitDialog) {
+        val unansweredCount = quiz.questions.count { userAnswers[it.id] == null }
+        AlertDialog(
+            onDismissRequest = { showConfirmSubmitDialog = false },
+            title = {
+                Text(
+                    text = "Unanswered Questions",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                )
+            },
+            text = {
+                Text(
+                    text = "You have $unansweredCount unanswered question${if (unansweredCount > 1) "s" else ""}. Submit anyway?",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showConfirmSubmitDialog = false
+                        quizSubmitted = true
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen),
+                    modifier = Modifier.testTag("confirm_submit_button")
+                ) {
+                    Text("Submit Anyway", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showConfirmSubmitDialog = false },
+                    modifier = Modifier.testTag("review_unanswered_button")
+                ) {
+                    Text("Review Questions")
+                }
+            }
+        )
+    }
 }
 
 @Composable
@@ -606,7 +663,8 @@ fun QuizResultsView(
     userAnswers: Map<Int, String>,
     onRetake: () -> Unit,
     onBackToDashboard: () -> Unit,
-    onOpenFlashcards: ((subjectId: String, unitId: String) -> Unit)? = null
+    onOpenFlashcards: ((subjectId: String, unitId: String) -> Unit)? = null,
+    isTimedOut: Boolean = false
 ) {
     var showMistakesOnly by remember { mutableStateOf(false) }
 
@@ -649,6 +707,37 @@ fun QuizResultsView(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Spacer(modifier = Modifier.height(8.dp))
+
+            if (isTimedOut) {
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = CoralRed.copy(alpha = 0.15f),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, CoralRed.copy(alpha = 0.4f)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("quiz_timeout_banner")
+                ) {
+                    Row(
+                        modifier = Modifier.padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Timer,
+                            contentDescription = null,
+                            tint = CoralRed,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(
+                            text = "Time's up — your quiz was submitted automatically.",
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                fontWeight = FontWeight.SemiBold,
+                                color = CoralRed
+                            )
+                        )
+                    }
+                }
+            }
 
             // Score Gauge and Points
             CircularScoreGauge(percentage = scorePercent)

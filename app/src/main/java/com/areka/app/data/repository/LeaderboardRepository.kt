@@ -4,12 +4,18 @@ import com.areka.app.data.model.BadgeType
 import com.areka.app.data.model.LeaderboardEntry
 import com.areka.app.data.model.UserProfile
 
+/**
+ * Abstraction for leaderboard datasets (mock local, future Supabase remote, etc.)
+ */
 interface LeaderboardDataSource {
     fun globalEntries(): List<LeaderboardEntry>
     fun classAEntries(userProfile: UserProfile): List<LeaderboardEntry>
 }
 
-class MockLeaderboardDataSource : LeaderboardDataSource {
+/**
+ * Deterministic local mock data source for offline/development fallback.
+ */
+class LocalMockLeaderboardDataSource : LeaderboardDataSource {
     override fun globalEntries(): List<LeaderboardEntry> = listOf(
         LeaderboardEntry("u1", 1, "Alex Chen", "Grade 10", 94800, false, BadgeType.GOLD, 0xFF3B82F6),
         LeaderboardEntry("u2", 2, "Sarah Johnson", "Grade 10", 91200, false, BadgeType.SILVER, 0xFFEC4899),
@@ -33,17 +39,38 @@ class MockLeaderboardDataSource : LeaderboardDataSource {
     )
 }
 
-class LeaderboardRepository(private val dataSource: LeaderboardDataSource) {
+typealias MockLeaderboardDataSource = LocalMockLeaderboardDataSource
+
+/**
+ * Future Supabase leaderboard data source placeholder.
+ * Falls back to local data source until the remote leaderboard schema and RPC are deployed.
+ */
+class SupabaseLeaderboardDataSource(
+    private val fallbackSource: LeaderboardDataSource = LocalMockLeaderboardDataSource()
+) : LeaderboardDataSource {
+    override fun globalEntries(): List<LeaderboardEntry> = fallbackSource.globalEntries()
+    override fun classAEntries(userProfile: UserProfile): List<LeaderboardEntry> = fallbackSource.classAEntries(userProfile)
+}
+
+class LeaderboardRepository(private val dataSource: LeaderboardDataSource = LocalMockLeaderboardDataSource()) {
+
     fun global(userProfile: UserProfile): List<LeaderboardEntry> = rank(
-        dataSource.globalEntries().map { if (it.isCurrentUser) it.copy(name = userProfile.name, grade = userProfile.grade, points = userProfile.totalPoints) else it }
+        dataSource.globalEntries().map {
+            if (it.isCurrentUser) it.copy(name = userProfile.name, grade = userProfile.grade, points = userProfile.totalPoints)
+            else it
+        }
     )
 
     fun classA(userProfile: UserProfile): List<LeaderboardEntry> = rank(dataSource.classAEntries(userProfile))
 
     fun userRank(userProfile: UserProfile): List<LeaderboardEntry> = global(userProfile).take(3)
 
+    fun calculateUserRank(userProfile: UserProfile): Int {
+        return global(userProfile).firstOrNull { it.isCurrentUser }?.rank ?: global(userProfile).size
+    }
+
     private fun rank(entries: List<LeaderboardEntry>): List<LeaderboardEntry> = entries
-        .sortedByDescending { it.points }
+        .sortedWith(compareByDescending<LeaderboardEntry> { it.points }.thenBy { it.id })
         .mapIndexed { index, entry ->
             entry.copy(
                 rank = index + 1,
