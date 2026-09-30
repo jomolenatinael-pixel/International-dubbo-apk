@@ -3,15 +3,25 @@ package com.areka.app
 import android.content.Context
 import android.net.Uri
 import androidx.test.core.app.ApplicationProvider
+import com.areka.app.data.local.GUEST_OWNER_ID
+import com.areka.app.data.local.QuizAttemptEntity
+import com.areka.app.data.model.QuestionType
 import com.areka.app.data.remote.AuthState
 import com.areka.app.data.remote.AuthValidator
 import com.areka.app.data.remote.InMemoryTokenStorage
+import com.areka.app.data.remote.SecureStorageException
 import com.areka.app.data.remote.SupabaseAuth
+import com.areka.app.data.remote.SupabaseQuestionSync
+import com.areka.app.data.repository.CurriculumData
+import org.json.JSONArray
+import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -28,10 +38,11 @@ class AuthSecurityTest {
     @Before
     fun setup() {
         context = ApplicationProvider.getApplicationContext<Context>()
-        // Ensure clean test preferences
+        // Ensure clean test preferences across test runs
         context.getSharedPreferences("areka_auth", Context.MODE_PRIVATE).edit().clear().commit()
         context.getSharedPreferences("areka_secure_tokens", Context.MODE_PRIVATE).edit().clear().commit()
         context.getSharedPreferences("areka_cloud_sync", Context.MODE_PRIVATE).edit().clear().commit()
+        context.getSharedPreferences("supabase_sync", Context.MODE_PRIVATE).edit().clear().commit()
     }
 
     // ==========================================
@@ -112,11 +123,26 @@ class AuthSecurityTest {
         val tokens = storage.getTokens()
         assertEquals("mock_access_token", tokens.accessToken)
         assertEquals("mock_refresh_token", tokens.refreshToken)
+        assertTrue(tokens.isAvailable)
 
         storage.clearTokens()
         val cleared = storage.getTokens()
         assertNull(cleared.accessToken)
         assertNull(cleared.refreshToken)
+    }
+
+    @Test
+    fun `secure storage failure throws SecureStorageException and marks unavailable`() {
+        val failingStorage = InMemoryTokenStorage(simulateFailure = true)
+        assertFalse(failingStorage.isAvailable())
+        assertFalse(failingStorage.getTokens().isAvailable)
+
+        try {
+            failingStorage.saveTokens("acc", "ref")
+            fail("Expected SecureStorageException")
+        } catch (e: SecureStorageException) {
+            assertTrue(e.message?.contains("Simulated") == true)
+        }
     }
 
     @Test
@@ -139,7 +165,7 @@ class AuthSecurityTest {
         assertFalse(legacyPrefs.contains("access_token"))
         assertFalse(legacyPrefs.contains("refresh_token"))
 
-        // 3. User metadata remains preserved in legacy SharedPreferences
+        // 3. Non-token user metadata remains preserved in legacy SharedPreferences
         assertEquals("u_test_123", legacyPrefs.getString("user_id", null))
     }
 
@@ -216,5 +242,84 @@ class AuthSecurityTest {
 
         assertEquals(uuid1, uuid2)
         assertEquals(36, uuid1.length) // Standard UUID length
+
+        // Different user ID produces different UUID even with same attempt ID
+        val diffUserSeed = "usr_99_$localAttemptId"
+        val diffUuid = UUID.nameUUIDFromBytes(diffUserSeed.toByteArray(Charsets.UTF_8)).toString()
+        assertNotEquals(uuid1, diffUuid)
+    }
+
+    // ==========================================
+    // 5. Account Isolation Tests
+    // ==========================================
+
+    @Test
+    fun `guest owner ID is constant and distinct from user IDs`() {
+        assertEquals("guest", GUEST_OWNER_ID)
+        val attemptGuest = QuizAttemptEntity(
+            ownerUserId = GUEST_OWNER_ID,
+            id = "att_g1",
+            quizId = "math_u1",
+            quizTitle = "Math Quiz",
+            subjectId = "math",
+            unitId = "math_u1",
+            scorePercent = 80,
+            correctAnswers = 4,
+            totalQuestions = 5,
+            timeSpentSeconds = 60
+        )
+        val attemptUserA = attemptGuest.copy(ownerUserId = "user_A_id", id = "att_u1")
+
+        assertEquals("guest", attemptGuest.ownerUserId)
+        assertEquals("user_A_id", attemptUserA.ownerUserId)
+        assertNotEquals(attemptGuest.ownerUserId, attemptUserA.ownerUserId)
+    }
+
+    // ==========================================
+    // 6. Remote Question Bank Parsing & Consumption
+    // ==========================================
+
+    @Test
+    fun `parseRemoteQuizzes converts Supabase question bank into domain models`() {
+        val quizzesJson = JSONArray().put(
+            JSONObject()
+                .put("id", "remote_chem_u1")
+                .put("unit", "chem_u1")
+                .put("title", "Remote Chemistry Quiz")
+                .put("subject", "Chemistry")
+        )
+        val questionsJson = JSONArray().put(
+            JSONObject()
+                .put("id", 101)
+                .put("quiz_id", "remote_chem_u1")
+                .put("question_type", "multiple_choice")
+                .put("question_text", "What is H2O?")
+                .put("explanation", "Water molecule")
+                .put("order_index", 1)
+        )
+        val choicesJson = JSONArray()
+            .put(JSONObject().put("id", "c1").put("question_id", 101).put("choice_text", "Water").put("is_correct", true))
+            .put(JSONObject().put("id", "c2").put("question_id", 101).put("choice_text", "Acid").put("is_correct", false))
+
+        val payload = JSONObject()
+            .put("quizzes", quizzesJson)
+            .put("questions", questionsJson)
+            .put("choices", choicesJson)
+
+        val parsed = SupabaseQuestionSync.parseRemoteQuizzes(payload)
+        assertEquals(1, parsed.size / 2) // Keyed by both quizId and unitId
+
+        val chemQuiz = parsed["chem_u1"]
+        assertNotNull(chemQuiz)
+        assertEquals("Remote Chemistry Quiz", chemQuiz?.title)
+        assertEquals(1, chemQuiz?.questions?.size)
+        assertEquals("What is H2O?", chemQuiz?.questions?.first()?.text)
+        assertEquals("c1", chemQuiz?.questions?.first()?.correctOptionId)
+        assertEquals(QuestionType.MULTIPLE_CHOICE, chemQuiz?.questions?.first()?.type)
+
+        // Verify consumption into CurriculumData
+        CurriculumData.setRemoteQuizzes(parsed)
+        val resolved = CurriculumData.getQuizForUnit("chem_u1")
+        assertEquals("Remote Chemistry Quiz", resolved.title)
     }
 }

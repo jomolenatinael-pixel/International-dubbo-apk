@@ -3,6 +3,11 @@ package com.areka.app.data.remote
 import android.content.Context
 import android.util.Log
 import com.areka.app.BuildConfig
+import com.areka.app.data.model.Question
+import com.areka.app.data.model.QuestionOption
+import com.areka.app.data.model.QuestionType
+import com.areka.app.data.model.Quiz
+import com.areka.app.data.repository.CurriculumData
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -16,7 +21,8 @@ import java.net.UnknownHostException
 
 /**
  * Remote question data source connecting to Supabase REST endpoints.
- * Caches content locally in a private JSON file for offline-first resilience.
+ * Caches content locally in a private JSON file for offline-first resilience
+ * and directly loads remote questions into CurriculumData for quiz consumption.
  */
 object SupabaseQuestionSync : RemoteQuestionDataSource {
     private const val TAG = "SupabaseQuestionSync"
@@ -27,6 +33,7 @@ object SupabaseQuestionSync : RemoteQuestionDataSource {
 
     override suspend fun sync(context: Context, force: Boolean): SyncResult = withContext(Dispatchers.IO) {
         if (BuildConfig.SUPABASE_URL.isBlank() || BuildConfig.SUPABASE_ANON_KEY.isBlank()) {
+            loadCachedQuizzesIntoCurriculum(context)
             return@withContext SyncResult.NetworkError("Supabase is not configured; using bundled curriculum.")
         }
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -34,6 +41,7 @@ object SupabaseQuestionSync : RemoteQuestionDataSource {
         val lastSync = prefs.getLong(LAST_SYNC, 0L)
 
         if (!force && (now - lastSync < SYNC_INTERVAL_MS)) {
+            loadCachedQuizzesIntoCurriculum(context)
             return@withContext SyncResult.Cached(lastSync)
         }
 
@@ -52,21 +60,30 @@ object SupabaseQuestionSync : RemoteQuestionDataSource {
                 output.write(payload.toString().toByteArray(Charsets.UTF_8))
             }
             prefs.edit().putLong(LAST_SYNC, now).apply()
+
+            val parsed = parseRemoteQuizzes(payload)
+            CurriculumData.setRemoteQuizzes(parsed)
+
             Log.i(TAG, "Successfully synced ${quizzes.length()} quizzes and ${questions.length()} questions from Supabase.")
             SyncResult.Success(quizzesCount = quizzes.length(), questionsCount = questions.length(), timestamp = now)
         } catch (e: UnknownHostException) {
-            Log.w(TAG, "Device offline or DNS unreachable. Using local bundled curriculum.")
+            loadCachedQuizzesIntoCurriculum(context)
+            Log.w(TAG, "Device offline or DNS unreachable. Using local curriculum.")
             SyncResult.NetworkError("Device is offline or DNS lookup failed.", e)
         } catch (e: SocketTimeoutException) {
+            loadCachedQuizzesIntoCurriculum(context)
             Log.w(TAG, "Connection timed out syncing question bank.")
             SyncResult.NetworkError("Connection timed out.", e)
         } catch (e: IOException) {
+            loadCachedQuizzesIntoCurriculum(context)
             Log.w(TAG, "I/O error during question sync: ${e.message}")
             SyncResult.NetworkError(e.message ?: "I/O error during sync", e)
         } catch (e: JSONException) {
+            loadCachedQuizzesIntoCurriculum(context)
             Log.e(TAG, "Failed to parse question bank response: ${e.message}")
             SyncResult.ParseError("Malformed JSON received from remote server", e)
         } catch (e: SupabaseHttpException) {
+            loadCachedQuizzesIntoCurriculum(context)
             Log.w(TAG, "HTTP error ${e.statusCode}: ${e.message}")
             if (e.statusCode in listOf(401, 403)) {
                 SyncResult.AuthError("Supabase authentication rejected request (${e.statusCode})")
@@ -74,8 +91,21 @@ object SupabaseQuestionSync : RemoteQuestionDataSource {
                 SyncResult.ServerError(e.statusCode, e.message ?: "Server error")
             }
         } catch (e: Exception) {
+            loadCachedQuizzesIntoCurriculum(context)
             Log.e(TAG, "Unexpected error during question sync", e)
             SyncResult.NetworkError("Unexpected sync failure: ${e.message}", e)
+        }
+    }
+
+    fun loadCachedQuizzesIntoCurriculum(context: Context) {
+        val payload = getCachedPayload(context) ?: return
+        try {
+            val parsed = parseRemoteQuizzes(payload)
+            if (parsed.isNotEmpty()) {
+                CurriculumData.setRemoteQuizzes(parsed)
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to load cached remote quizzes: ${e.message}")
         }
     }
 
@@ -87,6 +117,87 @@ object SupabaseQuestionSync : RemoteQuestionDataSource {
         } catch (_: Exception) {
             null
         }
+    }
+
+    fun parseRemoteQuizzes(payload: JSONObject): Map<String, Quiz> {
+        val quizzesJson = payload.optJSONArray("quizzes") ?: return emptyMap()
+        val questionsJson = payload.optJSONArray("questions") ?: JSONArray()
+        val choicesJson = payload.optJSONArray("choices") ?: JSONArray()
+
+        // Group choices by question_id
+        val choicesByQuestion = mutableMapOf<Int, MutableList<JSONObject>>()
+        for (i in 0 until choicesJson.length()) {
+            val choice = choicesJson.optJSONObject(i) ?: continue
+            val qId = choice.optInt("question_id", -1)
+            if (qId != -1) {
+                choicesByQuestion.getOrPut(qId) { mutableListOf() }.add(choice)
+            }
+        }
+
+        // Group questions by quiz_id
+        val questionsByQuiz = mutableMapOf<String, MutableList<JSONObject>>()
+        for (i in 0 until questionsJson.length()) {
+            val q = questionsJson.optJSONObject(i) ?: continue
+            val quizId = q.optString("quiz_id")
+            if (quizId.isNotBlank()) {
+                questionsByQuiz.getOrPut(quizId) { mutableListOf() }.add(q)
+            }
+        }
+
+        val result = mutableMapOf<String, Quiz>()
+        for (i in 0 until quizzesJson.length()) {
+            val quizObj = quizzesJson.optJSONObject(i) ?: continue
+            val quizId = quizObj.optString("id")
+            val unitId = quizObj.optString("unit").ifBlank { quizId }
+            val title = quizObj.optString("title").ifBlank { "Unit Quiz" }
+            val subject = quizObj.optString("subject").ifBlank { "General" }
+
+            val rawQuestions = questionsByQuiz[quizId] ?: questionsByQuiz[unitId] ?: emptyList()
+            if (rawQuestions.isEmpty()) continue
+
+            val questions = rawQuestions.mapIndexed { index, qJson ->
+                val qId = qJson.optInt("id", index + 1)
+                val qTypeStr = qJson.optString("question_type", "multiple_choice")
+                val isFillIn = qTypeStr.equals("fill_in_the_blank", ignoreCase = true)
+                val choices = choicesByQuestion[qId] ?: emptyList()
+
+                val options = choices.map { c ->
+                    QuestionOption(
+                        id = c.optString("id"),
+                        text = c.optString("choice_text")
+                    )
+                }
+
+                val correctChoice = choices.firstOrNull { it.optBoolean("is_correct", false) }
+                val correctOptionId = correctChoice?.optString("id")
+                    ?: qJson.optString("correct_answer").ifBlank { options.firstOrNull()?.id.orEmpty() }
+
+                Question(
+                    id = qId,
+                    questionNumber = qJson.optInt("order_index", index + 1),
+                    totalQuestions = rawQuestions.size,
+                    text = qJson.optString("question_text"),
+                    options = options,
+                    correctOptionId = correctOptionId,
+                    explanation = qJson.optString("explanation"),
+                    type = if (isFillIn) QuestionType.FILL_IN_THE_BLANK else QuestionType.MULTIPLE_CHOICE
+                )
+            }
+
+            val quiz = Quiz(
+                id = quizId,
+                title = title,
+                subject = subject,
+                subjectId = subject.lowercase(),
+                unitId = unitId,
+                durationMinutes = 5,
+                questions = questions
+            )
+            result[unitId] = quiz
+            result[quizId] = quiz
+        }
+
+        return result
     }
 
     private fun get(path: String): JSONArray {

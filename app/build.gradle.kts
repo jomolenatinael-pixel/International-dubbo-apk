@@ -12,7 +12,7 @@ val localProperties = Properties().apply {
   if (file.exists()) file.inputStream().use(::load)
 }
 
-fun localProperty(name: String): String = localProperties.getProperty(name, "")
+fun localProperty(name: String): String = (System.getenv(name) ?: localProperties.getProperty(name, ""))
   .replace("\\", "\\\\")
   .replace("\"", "\\\"")
 

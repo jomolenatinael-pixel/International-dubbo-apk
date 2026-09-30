@@ -200,8 +200,15 @@ object CurriculumData {
         CurriculumHistoryQuizImport.quizzes +
         CurriculumDriveQuestionBank.quizzes
 
+    private val remoteQuizzesMap = java.util.concurrent.ConcurrentHashMap<String, Quiz>()
+
+    fun setRemoteQuizzes(quizzes: Map<String, Quiz>) {
+        remoteQuizzesMap.clear()
+        remoteQuizzesMap.putAll(quizzes)
+    }
+
     val quizzes: List<Quiz>
-        get() = allQuizzesMap.values.toList()
+        get() = (allQuizzesMap + remoteQuizzesMap).values.toList()
 
     fun getUnitsForSubject(subjectId: String): List<SubjectUnit> {
         return units.filter { it.subjectId == subjectId }
@@ -216,6 +223,11 @@ object CurriculumData {
     }
 
     fun getQuizForUnit(unitId: String): Quiz {
+        val remoteQuiz = remoteQuizzesMap[unitId]
+        if (remoteQuiz != null && remoteQuiz.questions.isNotEmpty()) {
+            return remoteQuiz
+        }
+
         val handAuthored = allQuizzesMap[unitId]
         if (handAuthored != null) {
             return handAuthored

@@ -59,6 +59,7 @@ object StudyRepository {
         database = db
         SupabaseAuth.initialize(context.applicationContext)
         SupabaseCloudSync.initialize(context.applicationContext)
+        SupabaseQuestionSync.loadCachedQuizzesIntoCurriculum(context.applicationContext)
 
         // Attach DAOs to focused repositories
         profileRepository.attachDao(db.userProfileDao())

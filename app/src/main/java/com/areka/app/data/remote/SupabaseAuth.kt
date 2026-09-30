@@ -25,11 +25,12 @@ import java.util.Locale
  *
  * Security guarantees:
  * - Tokens are stored exclusively in Keystore-backed secure storage (never plaintext SharedPreferences).
- * - Passwords and tokens are never logged.
+ * - Passwords, tokens, and authorization headers are NEVER logged.
  * - Single synchronized refresh flow prevents token races on HTTP 401.
  * - Password recovery callback parses both fragments and query parameters securely into AuthState.PasswordRecovery.
  * - Updating password authenticates against /auth/v1/user and securely transitions to AuthState.SignedIn.
  * - User-facing messages never expose server internals or leak user account existence unnecessarily.
+ * - Safe handling of secure storage errors, corrupted keystores, leaked passwords, and HTTP 429 rate limits.
  */
 object SupabaseAuth {
     private const val PREFS = "areka_auth"
@@ -156,7 +157,7 @@ object SupabaseAuth {
 
     /**
      * Parses an incoming password recovery deep-link (areka://auth/recovery).
-     * Extracts tokens from either the URI fragment or query string and switches to
+     * Extracts tokens from either the URI fragment or query string and transitions to
      * AuthState.PasswordRecovery without treating the user as signed in yet.
      */
     fun handleRecoveryUri(uri: Uri?): Result<Unit> {
@@ -182,7 +183,6 @@ object SupabaseAuth {
 
         val recAccess = params["access_token"] ?: params["token"]
         val recRefresh = params["refresh_token"]
-        val type = params["type"]
 
         if (recAccess.isNullOrBlank()) {
             val msg = "This password reset link is missing required authorization tokens. Please request a new one."
@@ -208,7 +208,7 @@ object SupabaseAuth {
 
         val bearerToken = recoveryAccessToken ?: accessToken
         if (bearerToken.isNullOrBlank()) {
-            val err = AuthException("Your recovery session has expired. Please request a new reset link.")
+            val err = AuthException("Your recovery session has expired or has already been used. Please request a new reset link.")
             _state.value = AuthState.Error(err.message.orEmpty())
             return@withLock Result.failure(err)
         }
@@ -238,7 +238,13 @@ object SupabaseAuth {
             // Securely persist the new active session
             accessToken = bearerToken
             refreshToken = recoveryRefreshToken ?: refreshToken
-            tokenStorage?.saveTokens(accessToken, refreshToken)
+
+            try {
+                tokenStorage?.saveTokens(accessToken, refreshToken)
+            } catch (e: SecureStorageException) {
+                _state.value = AuthState.Error("Secure storage could not save your session. Please sign in.")
+                return@withLock Result.failure(AuthException("Secure storage could not save your session."))
+            }
 
             appContext?.getSharedPreferences(PREFS, Context.MODE_PRIVATE)?.edit()
                 ?.putString(USER_ID, user.id)
@@ -257,7 +263,7 @@ object SupabaseAuth {
             recoveryAccessToken = null
             recoveryRefreshToken = null
             val msg = if ((e as? AuthException)?.statusCode in setOf(400, 401, 403)) {
-                "Your password reset link has expired or is invalid. Please request a new one."
+                "Your password reset link has expired or has already been used. Please request a new one."
             } else {
                 userMessage(e)
             }
@@ -297,7 +303,18 @@ object SupabaseAuth {
     }
 
     private suspend fun restoreSession() = authMutex.withLock {
-        val tokens = tokenStorage?.getTokens() ?: StoredTokens(null, null)
+        val tokens = try {
+            tokenStorage?.getTokens() ?: StoredTokens(null, null)
+        } catch (e: Exception) {
+            StoredTokens(null, null, isAvailable = false)
+        }
+
+        if (!tokens.isAvailable) {
+            clearSession()
+            _state.value = AuthState.SignedOut
+            return@withLock
+        }
+
         accessToken = tokens.accessToken
         refreshToken = tokens.refreshToken
 
@@ -379,7 +396,12 @@ object SupabaseAuth {
         refreshToken = newRefresh ?: refreshToken
 
         // Tokens are strictly stored in Keystore-backed storage
-        tokenStorage?.saveTokens(accessToken, refreshToken)
+        try {
+            tokenStorage?.saveTokens(accessToken, refreshToken)
+        } catch (e: SecureStorageException) {
+            _state.value = AuthState.Error("Secure storage could not save your session. Please try again.")
+            return Result.failure(AuthException("Secure storage could not save your session."))
+        }
 
         // Metadata is kept in ordinary SharedPreferences (no plaintext tokens)
         appContext?.getSharedPreferences(PREFS, Context.MODE_PRIVATE)?.edit()
@@ -411,7 +433,10 @@ object SupabaseAuth {
         recoveryAccessToken = null
         recoveryRefreshToken = null
 
-        tokenStorage?.clearTokens()
+        try {
+            tokenStorage?.clearTokens()
+        } catch (_: Exception) {}
+
         appContext?.getSharedPreferences(PREFS, Context.MODE_PRIVATE)?.edit()?.clear()?.apply()
 
         _state.value = AuthState.SignedOut
@@ -459,6 +484,10 @@ object SupabaseAuth {
     }
 
     private fun userMessage(error: Exception): String = when {
+        error is AuthException && error.statusCode == 429 ->
+            "Too many requests. Please wait a moment and try again."
+        error is AuthException && (error.statusCode == 422 || error.message?.contains("pwned", true) == true || error.message?.contains("breach", true) == true) ->
+            "This password has appeared in a known data breach. For your security, please choose a different password."
         error is AuthException && (error.statusCode == 401 || error.statusCode == 400 && error.message?.contains("invalid", true) == true) ->
             "Invalid email or password."
         error is AuthException && error.message?.contains("already registered", true) == true ->
@@ -468,7 +497,7 @@ object SupabaseAuth {
         error is AuthException && error.message?.contains("weak", true) == true ->
             "Password must be at least 6 characters."
         error is AuthException && error.message?.contains("expired", true) == true ->
-            "This link has expired. Please request a new one."
+            "This link has expired or has already been used. Please request a new one."
         error is IOException ->
             "Connection failed. Please check your internet connection and try again."
         else ->
@@ -488,9 +517,7 @@ object SupabaseAuth {
             uri.queryParameterNames?.forEach { name ->
                 uri.getQueryParameter(name)?.let { map[name] = it }
             }
-        } catch (_: Exception) {
-            // Ignore malformed query names
-        }
+        } catch (_: Exception) {}
 
         val fragment = uri.fragment
         if (!fragment.isNullOrBlank()) {
@@ -523,3 +550,4 @@ sealed interface AuthState {
 }
 
 class AuthException(message: String, val statusCode: Int = 0) : Exception(message)
+
