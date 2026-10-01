@@ -101,6 +101,13 @@ object SupabaseAuth {
         )
     }
 
+    suspend fun signInWithGoogleIdToken(idToken: String, nonce: String? = null): Result<AuthUser> = authMutex.withLock {
+        if (idToken.isBlank()) return@withLock Result.failure(AuthException("Google did not return an ID token."))
+        val body = JSONObject().put("provider", "google").put("id_token", idToken)
+        if (!nonce.isNullOrBlank()) body.put("nonce", nonce)
+        authenticateLocked("/auth/v1/token?grant_type=id_token", body)
+    }
+
     suspend fun sendPasswordReset(email: String): Result<Unit> = authMutex.withLock {
         val emailErr = AuthValidator.validateEmail(email)
         if (emailErr != null) return@withLock Result.failure(AuthException(emailErr))

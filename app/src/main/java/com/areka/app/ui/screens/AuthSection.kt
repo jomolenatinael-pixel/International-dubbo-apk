@@ -1,5 +1,7 @@
 package com.areka.app.ui.screens
 
+import android.app.Activity
+import androidx.credentials.CredentialManager
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -31,12 +33,14 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.areka.app.data.remote.AuthState
 import com.areka.app.data.remote.AuthValidator
+import com.areka.app.data.remote.GoogleAuth
 import com.areka.app.data.remote.SupabaseAuth
 import com.areka.app.data.remote.SupabaseCloudSync
 import kotlinx.coroutines.launch
@@ -48,6 +52,10 @@ fun AuthSection(modifier: Modifier = Modifier) {
     val authState by SupabaseAuth.state.collectAsState()
     var dialogMode by remember { mutableStateOf<AuthDialogMode?>(null) }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val googleAuth = remember(context) { GoogleAuth(CredentialManager.create(context)) }
+    var googleLoading by remember { mutableStateOf(false) }
+    var googleError by remember { mutableStateOf<String?>(null) }
     val user = (authState as? AuthState.SignedIn)?.user
 
     LaunchedEffect(user?.id) {
@@ -95,7 +103,12 @@ fun AuthSection(modifier: Modifier = Modifier) {
                         style = MaterialTheme.typography.bodySmall
                     )
                     OutlinedButton(
-                        onClick = { scope.launch { SupabaseAuth.signOut() } },
+                        onClick = {
+                            scope.launch {
+                                googleAuth.clearCredentialState()
+                                SupabaseAuth.signOut()
+                            }
+                        },
                         modifier = Modifier.testTag("auth_sign_out_button")
                     ) {
                         Text("Sign out")
@@ -147,6 +160,35 @@ fun AuthSection(modifier: Modifier = Modifier) {
                         color = if (state is AuthState.Error) MaterialTheme.colorScheme.error
                         else MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    googleError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                    Button(
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !googleLoading,
+                        onClick = {
+                            val activity = context as? Activity
+                            if (activity == null) {
+                                googleError = "Google sign-in is unavailable in this window."
+                            } else {
+                                googleLoading = true
+                                googleError = null
+                                scope.launch {
+                                    googleAuth.signIn(activity).fold(
+                                        onSuccess = { googleLoading = false },
+                                        onFailure = {
+                                            googleLoading = false
+                                            googleError = it.message ?: "Google sign-in failed."
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    ) {
+                        if (googleLoading) {
+                            CircularProgressIndicator(strokeWidth = 2.dp)
+                        } else {
+                            Text("Continue with Google")
+                        }
+                    }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(
                             onClick = { dialogMode = AuthDialogMode.SIGN_IN },

@@ -13,6 +13,7 @@
 - **Leaderboards:** Local deterministic leaderboard calculating user rank dynamically from actual points, with an extensible `LeaderboardDataSource` interface prepared for remote Supabase integration.
 - **Theming:** Full Material Design 3 light and dark theme support.
 - **Offline-First Resilience:** All learning content, flashcards, attempts, schedules, and profile state are persisted locally via Room database.
+- **Optional Google Sign-In:** Profile supports Credential Manager Google ID-token sign-in through Supabase while guest study remains fully available offline.
 
 ## Technology stack
 
@@ -68,6 +69,18 @@ gradle :app:testDebugUnitTest
 # Run verification checks
 gradle check
 ```
+
+## Local Supabase and Google configuration
+
+Create an ignored `local.properties` file at the repository root with:
+
+```properties
+SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
+SUPABASE_ANON_KEY=YOUR_PUBLISHABLE_OR_ANON_KEY
+GOOGLE_WEB_CLIENT_ID=YOUR_WEB_OAUTH_CLIENT_ID.apps.googleusercontent.com
+```
+
+`GOOGLE_WEB_CLIENT_ID` must be the **Web application** OAuth client ID, not the Android client ID. Register `com.areka.app` plus the debug/release SHA-1 in a separate Android OAuth client, then enable Google in Supabase with the Web client ID and Web client secret. See [`SUPABASE_SETUP.md`](SUPABASE_SETUP.md) for the exact callback URL, SHA-1 commands, and test checklist. Client secrets and access tokens must never be committed.
 
 ## Application metadata
 

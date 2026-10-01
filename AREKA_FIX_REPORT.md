@@ -169,3 +169,13 @@ A complete security hardening pass was implemented directly in the repository:
      - Secure token storage, legacy token migration, and plaintext scrubbing
      - Password recovery deep link parsing (fragments, query parameters, error parameters, missing tokens)
      - Attempt idempotency deterministic UUID stability
+
+
+## Google sign-in extension
+
+Google sign-in was added on top of the existing email/password auth without changing navigation or guest study behavior. Profile now presents a prominent **Continue with Google** action backed by Android Credential Manager. A cryptographically random nonce is hashed for Google and the raw nonce is sent to Supabase's `id_token` grant endpoint. The returned Supabase session uses the existing token persistence, auth state, profile trigger, refresh, and cloud-sync behavior. Sign-out clears both the Supabase session and Credential Manager provider state.
+
+The project uses `googleid:1.1.1` because the newer `1.2.1` artifact requires Kotlin 2.4 metadata while this repository's Kotlin compiler is 2.2. Credential Manager is configured through the version catalog. `GOOGLE_WEB_CLIENT_ID` is read only from ignored `local.properties`; no client secret, ID token, or keystore is committed. Google Cloud and Supabase provider setup, Web-versus-Android client placement, callback URL, SHA-1 commands, and the remaining live-provider checklist are documented in `SUPABASE_SETUP.md` and `README.md`.
+
+Verification completed: `testDebugUnitTest` and `compileDebugKotlin` pass after the dependency compatibility correction. Live Google sign-in cannot be completed in the sandbox until a Google Web client ID is placed in local `local.properties`, the Android and Web OAuth clients are created, and Google is enabled in the Supabase Dashboard with the Web client secret.
+
