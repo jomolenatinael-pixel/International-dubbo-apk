@@ -1,6 +1,7 @@
 package com.areka.app.data.remote
 
 import android.app.Activity
+import android.util.Log
 import androidx.credentials.ClearCredentialStateRequest
 import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
@@ -45,9 +46,11 @@ class GoogleAuth(private val credentialManager: CredentialManager) {
         } catch (_: GoogleIdTokenParsingException) {
             Result.failure(AuthException("Google returned an invalid sign-in token."))
         } catch (e: GetCredentialException) {
+            Log.w(TAG, "Credential Manager Google sign-in failed: ${e::class.java.simpleName}: ${e.message}")
             Result.failure(AuthException(credentialErrorMessage(e)))
-        } catch (_: Exception) {
-            Result.failure(AuthException("Google sign-in could not be completed. Please try again."))
+        } catch (e: Exception) {
+            Log.w(TAG, "Google sign-in failed before Supabase exchange: ${e::class.java.simpleName}: ${e.message}")
+            Result.failure(AuthException("Google sign-in failed (${e::class.java.simpleName}). Check the Android OAuth package and SHA-1, then try again."))
         }
     }
 
@@ -71,6 +74,12 @@ class GoogleAuth(private val credentialManager: CredentialManager) {
     private fun credentialErrorMessage(error: GetCredentialException): String = when {
         error.message?.contains("cancel", ignoreCase = true) == true -> "Google sign-in was cancelled."
         error.message?.contains("No credentials", ignoreCase = true) == true -> "No Google account is available on this device."
-        else -> "Google sign-in could not be completed. Please try again."
+        error::class.java.simpleName.contains("ProviderConfiguration", ignoreCase = true) ->
+            "Google provider setup failed. Verify package com.areka.app, the APK SHA-1, and the Web client ID."
+        else -> "Google sign-in failed (${error::class.java.simpleName}). Check the Android OAuth package and SHA-1."
+    }
+
+    private companion object {
+        const val TAG = "ArekaGoogleAuth"
     }
 }
