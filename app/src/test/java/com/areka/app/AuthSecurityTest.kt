@@ -154,7 +154,12 @@ class AuthSecurityTest {
             .putString("user_id", "u_test_123")
             .commit()
 
-        val secureStorage = com.areka.app.data.remote.AndroidKeystoreTokenStorage(context)
+        val testSecurePrefs = context.getSharedPreferences("test_encrypted_prefs", Context.MODE_PRIVATE)
+        testSecurePrefs.edit().clear().commit()
+        val secureStorage = com.areka.app.data.remote.AndroidKeystoreTokenStorage(
+            context = context,
+            customSecurePrefs = testSecurePrefs
+        )
         val migrated = secureStorage.getTokens()
 
         // 1. Tokens were recovered

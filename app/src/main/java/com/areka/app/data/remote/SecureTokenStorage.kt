@@ -46,7 +46,8 @@ interface SecureTokenStorage {
 class AndroidKeystoreTokenStorage(
     private val context: Context,
     private val legacyPrefsName: String = "areka_auth",
-    private val securePrefsName: String = "areka_secure_tokens"
+    private val securePrefsName: String = "areka_secure_tokens",
+    private val customSecurePrefs: SharedPreferences? = null
 ) : SecureTokenStorage {
 
     companion object {
@@ -79,7 +80,15 @@ class AndroidKeystoreTokenStorage(
 
     @Synchronized
     private fun initializeStorage(attemptRecovery: Boolean = true) {
+        if (customSecurePrefs != null) {
+            securePrefs = customSecurePrefs
+            initialized = true
+            return
+        }
         try {
+            // Ensure preferences file skeleton exists on disk so SharedPreferencesImpl does not fail with ENOENT
+            context.getSharedPreferences(securePrefsName, Context.MODE_PRIVATE)
+
             val masterKey = MasterKey.Builder(context)
                 .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
                 .build()
@@ -110,17 +119,12 @@ class AndroidKeystoreTokenStorage(
 
     private fun purgeCorruptedStorage() {
         try {
-            // 1. Delete preferences file from disk
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                context.deleteSharedPreferences(securePrefsName)
-            } else {
-                val file = File(context.applicationInfo.dataDir, "shared_prefs/$securePrefsName.xml")
-                if (file.exists()) file.delete()
-            }
+            // Clear contents of the corrupted preferences file
+            context.getSharedPreferences(securePrefsName, Context.MODE_PRIVATE).edit().clear().commit()
         } catch (_: Exception) {}
 
         try {
-            // 2. Remove master key entry from Android KeyStore
+            // Remove master key entry from Android KeyStore
             val keyStore = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
             if (keyStore.containsAlias(MasterKey.DEFAULT_MASTER_KEY_ALIAS)) {
                 keyStore.deleteEntry(MasterKey.DEFAULT_MASTER_KEY_ALIAS)
