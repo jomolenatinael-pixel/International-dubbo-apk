@@ -81,18 +81,14 @@ fun ArekaTopBar(
                     modifier = Modifier
                         .size(38.dp)
                         .clip(RoundedCornerShape(10.dp))
-                        .background(
-                            Brush.linearGradient(
-                                listOf(NeonCyan, ElectricBlue, NeonPurple)
-                            )
-                        )
-                        .shadow(4.dp, RoundedCornerShape(10.dp), ambientColor = NeonCyan, spotColor = ElectricBlue),
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(10.dp)),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = "A",
                         style = MaterialTheme.typography.titleLarge.copy(
-                            color = Color.White,
+                            color = NeonCyan,
                             fontWeight = FontWeight.Black
                         )
                     )

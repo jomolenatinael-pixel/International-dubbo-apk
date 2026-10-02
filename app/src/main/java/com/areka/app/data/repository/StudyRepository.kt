@@ -53,6 +53,7 @@ object StudyRepository {
     val openMistakes: StateFlow<List<MistakeEntity>> get() = mistakeRepository.openMistakes
     val recentActivities: StateFlow<List<RecentActivity>> get() = quizRepository.recentActivities
 
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     fun initialize(context: Context) {
         if (database != null) return
         val db = AppDatabase.getInstance(context)

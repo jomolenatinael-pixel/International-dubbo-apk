@@ -26,6 +26,7 @@ class ProfileRepository(
     private val _userProfile = MutableStateFlow(UserProfile(name = "Student", grade = "Grade 10"))
     val userProfile: StateFlow<UserProfile> = _userProfile.asStateFlow()
 
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     fun attachDao(dao: UserProfileDao) {
         scope.launch {
             ownerIdFlow().flatMapLatest { owner ->

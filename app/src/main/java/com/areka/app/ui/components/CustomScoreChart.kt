@@ -209,9 +209,7 @@ fun CircularScoreGauge(
             // Foreground progress arc
             if (progressSweep > 0.5f) {
                 drawArc(
-                    brush = Brush.sweepGradient(
-                        colors = listOf(ElectricBlue, primaryColor, NeonPurple, primaryColor)
-                    ),
+                    color = primaryColor,
                     startAngle = startAngle,
                     sweepAngle = progressSweep,
                     useCenter = false,
@@ -258,47 +256,19 @@ fun GlowingBadgeItem(
     isUnlocked: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val infiniteTransition = rememberInfiniteTransition(label = "badgePulse")
-    val pulseAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.4f,
-        targetValue = 0.9f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1500, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "pulse"
-    )
-
     Column(
         modifier = modifier.padding(horizontal = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        val badgeBorderColor = if (isUnlocked) AmberGold.copy(alpha = 0.6f) else MaterialTheme.colorScheme.outline
+        val badgeBgColor = if (isUnlocked) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.surfaceVariant
+
         Box(
             modifier = Modifier
-                .size(54.dp)
-                .shadow(
-                    elevation = if (isUnlocked) 6.dp else 0.dp,
-                    shape = CircleShape,
-                    ambientColor = color.copy(alpha = pulseAlpha),
-                    spotColor = color
-                )
+                .size(48.dp)
                 .clip(CircleShape)
-                .background(
-                    if (isUnlocked) {
-                        Brush.radialGradient(
-                            colors = listOf(color.copy(alpha = 0.8f), DarkNavyCard)
-                        )
-                    } else {
-                        Brush.radialGradient(
-                            colors = listOf(DarkNavyCardBorder, DarkNavyInput)
-                        )
-                    }
-                )
-                .border(
-                    width = 2.dp,
-                    brush = if (isUnlocked) Brush.sweepGradient(listOf(color, NeonCyan, color)) else SolidColor(DarkNavyCardBorder),
-                    shape = CircleShape
-                ),
+                .background(badgeBgColor)
+                .border(1.dp, badgeBorderColor, CircleShape),
             contentAlignment = Alignment.Center
         ) {
             val iconVector = when {
@@ -306,14 +276,14 @@ fun GlowingBadgeItem(
                 days <= 14 -> Icons.Default.MilitaryTech
                 days <= 30 -> Icons.Default.EmojiEvents
                 days <= 60 -> Icons.Default.LocalFireDepartment
-                else -> Icons.Default.AutoAwesome
+                else -> Icons.Default.EmojiEvents
             }
 
             Icon(
                 imageVector = iconVector,
                 contentDescription = "$title ($days days requirement)",
-                tint = if (isUnlocked) Color.White else TextMuted,
-                modifier = Modifier.size(24.dp)
+                tint = if (isUnlocked) AmberGold else MaterialTheme.colorScheme.secondaryTextColor,
+                modifier = Modifier.size(22.dp)
             )
         }
 
@@ -323,7 +293,7 @@ fun GlowingBadgeItem(
             text = "${days}d",
             style = MaterialTheme.typography.labelSmall.copy(
                 fontWeight = FontWeight.Bold,
-                color = if (isUnlocked) color else MaterialTheme.colorScheme.secondaryTextColor,
+                color = if (isUnlocked) AmberGold else MaterialTheme.colorScheme.secondaryTextColor,
                 fontSize = 11.sp
             )
         )

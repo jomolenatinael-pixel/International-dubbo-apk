@@ -31,6 +31,8 @@ import com.areka.app.data.model.Achievement
 import com.areka.app.data.model.LeaderboardEntry
 import com.areka.app.data.model.RecentActivity
 import com.areka.app.data.model.UserProfile
+import com.areka.app.data.remote.AuthState
+import com.areka.app.data.remote.SupabaseAuth
 import com.areka.app.data.remote.SupabaseCloudSync
 import com.areka.app.data.repository.StudyRepository
 import com.areka.app.ui.components.MistakesReviewDialog
@@ -58,6 +60,8 @@ fun ProfileScreen(
     val activities by StudyRepository.recentActivities.collectAsStateWithLifecycle()
     val openMistakes by StudyRepository.openMistakes.collectAsStateWithLifecycle()
     val remoteLeaderboard by SupabaseCloudSync.leaderboard.collectAsStateWithLifecycle()
+    val authState by SupabaseAuth.state.collectAsStateWithLifecycle()
+    val isUserAdmin = (authState as? AuthState.SignedIn)?.user?.isAdmin == true
     val leaderboardEntries = remoteLeaderboard
     val liveRank = remoteLeaderboard.firstOrNull { it.isCurrentUser }?.rank
 
@@ -232,28 +236,16 @@ fun ProfileScreen(
                 val primaryAccent = if (LocalThemeIsDark.current) NeonCyan else ElectricBlue
 
                 Card(
-                    shape = RoundedCornerShape(22.dp),
+                    shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    border = androidx.compose.foundation.BorderStroke(
-                        1.5.dp,
-                        Brush.horizontalGradient(listOf(primaryAccent, ElectricBlue, NeonPurple))
-                    ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(
-                                Brush.linearGradient(
-                                    listOf(
-                                        primaryAccent.copy(alpha = 0.12f),
-                                        NeonPurple.copy(alpha = 0.08f),
-                                        Color.Transparent
-                                    )
-                                )
-                            )
-                            .padding(20.dp)
+                            .padding(16.dp)
                     ) {
                         val initials = userProfile.name.split(" ")
                             .filter { it.isNotBlank() }
@@ -275,18 +267,15 @@ fun ProfileScreen(
                                     modifier = Modifier
                                         .size(64.dp)
                                         .clip(CircleShape)
-                                        .background(
-                                            Brush.sweepGradient(listOf(primaryAccent, ElectricBlue, NeonPurple, primaryAccent))
-                                        )
-                                        .border(2.dp, primaryAccent, CircleShape)
-                                        .shadow(8.dp, CircleShape, ambientColor = primaryAccent),
+                                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                                        .border(1.5.dp, primaryAccent, CircleShape),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
                                         text = initials,
                                         style = MaterialTheme.typography.headlineSmall.copy(
                                             fontWeight = FontWeight.Black,
-                                            color = Color.White
+                                            color = primaryAccent
                                         )
                                     )
                                 }
@@ -294,15 +283,34 @@ fun ProfileScreen(
                                 Spacer(modifier = Modifier.width(16.dp))
 
                                 Column {
-                                    Text(
-                                        text = userProfile.name,
-                                        style = MaterialTheme.typography.headlineSmall.copy(
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.onBackground
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Text(
+                                            text = userProfile.name,
+                                            style = MaterialTheme.typography.headlineSmall.copy(
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.onBackground
+                                            )
                                         )
-                                    )
+                                        if (isUserAdmin) {
+                                            Surface(
+                                                shape = RoundedCornerShape(50),
+                                                color = MaterialTheme.colorScheme.primaryContainer
+                                            ) {
+                                                Text(
+                                                    text = "Admin",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                                    fontWeight = FontWeight.Bold,
+                                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                                                )
+                                            }
+                                        }
+                                    }
                                     Text(
-                                        text = "${userProfile.grade} • Student",
+                                        text = "${userProfile.grade} • ${if (isUserAdmin) "Administrator" else "Student"}",
                                         style = MaterialTheme.typography.bodySmall.copy(
                                             color = primaryAccent,
                                             fontWeight = FontWeight.SemiBold
@@ -389,7 +397,7 @@ fun ProfileScreen(
                                     )
                                 )
                                 Text(
-                                    text = liveRank?.let { "#$it" } ?: "—",
+                                    text = liveRank?.let { "#$it" } ?: "Unranked",
                                     style = MaterialTheme.typography.titleLarge.copy(
                                         fontWeight = FontWeight.Bold,
                                         color = primaryAccent
@@ -433,7 +441,7 @@ fun ProfileScreen(
                         StatMetricCard(
                             label = "Time Studied",
                             value = "${userProfile.timeStudiedHours} hrs",
-                            accentColor = NeonPurple,
+                            accentColor = AmberGold,
                             modifier = Modifier.weight(1f)
                         )
                     }

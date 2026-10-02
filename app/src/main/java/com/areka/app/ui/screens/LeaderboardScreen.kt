@@ -230,7 +230,7 @@ fun LeaderboardScreen(
                                 text = if (pointsDiff > 0) {
                                     "${"%,d".format(pointsDiff)} pts to reach Rank #1"
                                 } else {
-                                    "You're in 1st Place! 🏆"
+                                    "You are in 1st Place!"
                                 },
                                 style = MaterialTheme.typography.bodySmall.copy(
                                     color = if (LocalThemeIsDark.current) NeonCyan else ElectricBlue,

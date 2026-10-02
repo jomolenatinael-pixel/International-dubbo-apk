@@ -594,7 +594,7 @@ fun InteractiveFlashcardDeck(
             contentAlignment = Alignment.Center
         ) {
             Card(
-                shape = RoundedCornerShape(24.dp),
+                shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = if (isFlipped) {
                         MaterialTheme.colorScheme.surfaceVariant
@@ -603,10 +603,10 @@ fun InteractiveFlashcardDeck(
                     }
                 ),
                 border = androidx.compose.foundation.BorderStroke(
-                    2.dp,
-                    if (isFlipped) accentColor else accentColor.copy(alpha = 0.5f)
+                    1.dp,
+                    MaterialTheme.colorScheme.outline
                 ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                 modifier = Modifier
                     .fillMaxSize()
                     .graphicsLayer {
@@ -863,13 +863,13 @@ fun InteractiveFlashcardDeck(
 
             Button(
                 onClick = onStartQuiz,
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(8.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                 modifier = Modifier
-                    .height(40.dp)
+                    .heightIn(min = 48.dp)
                     .testTag("unit_quiz_from_flashcards_btn")
             ) {
-                Icon(Icons.Default.Quiz, contentDescription = null, modifier = Modifier.size(16.dp), tint = accentColor)
+                Icon(Icons.Default.Quiz, contentDescription = null, modifier = Modifier.size(16.dp), tint = NeonCyan)
                 Spacer(modifier = Modifier.width(6.dp))
                 Text("Unit Quiz", color = MaterialTheme.colorScheme.onBackground, fontWeight = FontWeight.Bold, fontSize = 13.sp)
             }
@@ -1007,10 +1007,10 @@ fun AnkiQueueCompleteView(
             )
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         Text(
-            text = "No cards due in this unit! 🎉",
+            text = "No cards due in this unit",
             style = MaterialTheme.typography.headlineSmall.copy(
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground,
@@ -1204,12 +1204,12 @@ fun AnkiBrowseModeView(
             contentAlignment = Alignment.Center
         ) {
             Card(
-                shape = RoundedCornerShape(24.dp),
+                shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = if (isFlipped) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface
                 ),
-                border = androidx.compose.foundation.BorderStroke(2.dp, accentColor.copy(alpha = 0.5f)),
-                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                 modifier = Modifier
                     .fillMaxSize()
                     .graphicsLayer {

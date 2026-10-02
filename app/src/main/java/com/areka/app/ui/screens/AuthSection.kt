@@ -51,6 +51,7 @@ private enum class AuthDialogMode { SIGN_IN, SIGN_UP, RESET_PASSWORD }
 fun AuthSection(modifier: Modifier = Modifier) {
     val authState by SupabaseAuth.state.collectAsState()
     var dialogMode by remember { mutableStateOf<AuthDialogMode?>(null) }
+    var showRecoveryDialog by remember(authState) { mutableStateOf(authState is AuthState.PasswordRecovery) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val googleAuth = remember(context) { GoogleAuth(CredentialManager.create(context)) }
@@ -130,7 +131,7 @@ fun AuthSection(modifier: Modifier = Modifier) {
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(
-                            onClick = { /* Password recovery dialog shown below */ },
+                            onClick = { showRecoveryDialog = true },
                             modifier = Modifier.testTag("auth_set_new_password_button")
                         ) {
                             Text("Set new password")
@@ -209,12 +210,13 @@ fun AuthSection(modifier: Modifier = Modifier) {
     }
 
     // Password Recovery Dialog when in recovery state
-    if (authState is AuthState.PasswordRecovery) {
+    if (authState is AuthState.PasswordRecovery && showRecoveryDialog) {
         val recoveryState = authState as AuthState.PasswordRecovery
         PasswordRecoveryDialog(
             email = recoveryState.email,
-            onDismiss = { SupabaseAuth.cancelPasswordRecovery() },
+            onDismiss = { showRecoveryDialog = false },
             onUpdated = {
+                showRecoveryDialog = false
                 scope.launch {
                     SupabaseCloudSync.syncAdminFlag()
                     SupabaseCloudSync.refreshLeaderboard()

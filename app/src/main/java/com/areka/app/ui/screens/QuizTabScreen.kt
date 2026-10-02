@@ -211,7 +211,7 @@ fun QuizTabScreen(
                     )
                 )
                 Text(
-                    text = "Choose a unit • Full curriculum quiz",
+                    text = "Choose a unit",
                     style = MaterialTheme.typography.labelSmall.copy(
                         color = accentColor,
                         fontWeight = FontWeight.SemiBold
@@ -231,7 +231,7 @@ fun QuizTabScreen(
                 items(unitsForSubject, key = { it.id }) { unit ->
                     val unitQuiz = remember(unit.id) { StudyRepository.getQuizForUnit(unit.id) }
                     Card(
-                        shape = RoundedCornerShape(18.dp),
+                        shape = RoundedCornerShape(16.dp),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                         border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
                         modifier = Modifier
@@ -299,17 +299,21 @@ fun QuizTabScreen(
                                 )
                             )
 
-                            Spacer(modifier = Modifier.height(14.dp))
+                            Spacer(modifier = Modifier.height(16.dp))
 
                             Button(
                                 onClick = {
                                     val quiz = StudyRepository.getQuizForUnit(unit.id)
                                     onStartQuiz(quiz)
                                 },
-                                shape = RoundedCornerShape(12.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = accentColor),
+                                shape = RoundedCornerShape(8.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = NeonCyan,
+                                    contentColor = Color.Black
+                                ),
                                 modifier = Modifier
                                     .fillMaxWidth()
+                                    .heightIn(min = 48.dp)
                                     .testTag("start_quiz_btn_${unit.id}")
                             ) {
                                 Icon(
@@ -318,7 +322,7 @@ fun QuizTabScreen(
                                     modifier = Modifier.size(16.dp)
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("Take Quiz")
+                                Text("Take Quiz", fontWeight = FontWeight.Bold)
                             }
                         }
                     }

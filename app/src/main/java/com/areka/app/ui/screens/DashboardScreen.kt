@@ -92,8 +92,9 @@ fun DashboardScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column {
+                        val displayName = userProfile.name.substringBefore(" ").ifBlank { userProfile.name.ifBlank { "Learner" } }
                         Text(
-                            text = "Welcome, ${userProfile.name.substringBefore(" ")}!",
+                            text = "Welcome, $displayName!",
                             style = MaterialTheme.typography.headlineMedium.copy(
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onBackground
@@ -111,10 +112,8 @@ fun DashboardScreen(
                     Surface(
                         shape = CircleShape,
                         color = MaterialTheme.colorScheme.surface,
-                        border = androidx.compose.foundation.BorderStroke(1.5.dp, NeonCyan.copy(alpha = 0.6f)),
-                        modifier = Modifier
-                            .size(48.dp)
-                            .shadow(6.dp, CircleShape, ambientColor = NeonCyan)
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                        modifier = Modifier.size(48.dp)
                     ) {
                         val initials = userProfile.name.split(" ")
                             .filter { it.isNotBlank() }
@@ -134,7 +133,7 @@ fun DashboardScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
                 // Modern Search Bar
                 OutlinedTextField(
@@ -232,12 +231,16 @@ fun DashboardScreen(
                             Spacer(modifier = Modifier.height(12.dp))
                             Button(
                                 onClick = { onSearchQueryChange("") },
-                                shape = RoundedCornerShape(12.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = ElectricBlue)
+                                shape = RoundedCornerShape(8.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = NeonCyan,
+                                    contentColor = Color.Black
+                                ),
+                                modifier = Modifier.heightIn(min = 48.dp)
                             ) {
                                 Icon(Icons.Default.Clear, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("Clear Search")
+                                Text("Clear Search", fontWeight = FontWeight.Bold)
                             }
                         }
                     }
@@ -273,11 +276,15 @@ fun DashboardScreen(
                             }
                             Button(
                                 onClick = { onStartQuiz(quiz) },
-                                shape = RoundedCornerShape(10.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = ElectricBlue),
-                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
+                                shape = RoundedCornerShape(8.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = NeonCyan,
+                                    contentColor = Color.Black
+                                ),
+                                modifier = Modifier.heightIn(min = 48.dp),
+                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
                             ) {
-                                Text("Start")
+                                Text("Start", fontWeight = FontWeight.Bold)
                             }
                         }
                     }
@@ -296,13 +303,10 @@ fun DashboardScreen(
                     ?: "${lastStudySubject.name}: ${lastStudyUnit?.title ?: "Unit 1"}"
 
                 Card(
-                    shape = RoundedCornerShape(20.dp),
+                    shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    border = androidx.compose.foundation.BorderStroke(
-                        1.dp,
-                        Brush.horizontalGradient(listOf(NeonCyan.copy(alpha = 0.6f), ElectricBlue.copy(alpha = 0.6f)))
-                    ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("today_card")
@@ -310,90 +314,66 @@ fun DashboardScreen(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(
-                                Brush.linearGradient(
-                                    listOf(
-                                        ElectricBlue.copy(alpha = 0.12f),
-                                        NeonCyan.copy(alpha = 0.08f),
-                                        Color.Transparent
-                                    )
-                                )
-                            )
-                            .padding(18.dp)
+                            .padding(16.dp)
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Surface(
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = (if (LocalThemeIsDark.current) NeonCyan else ElectricBlue).copy(alpha = 0.15f)
-                                ) {
-                                    Text(
-                                        text = "TODAY",
-                                        style = MaterialTheme.typography.labelSmall.copy(
-                                            fontWeight = FontWeight.Black,
-                                            color = if (LocalThemeIsDark.current) NeonCyan else ElectricBlue,
-                                            letterSpacing = 1.sp
-                                        ),
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                    )
-                                }
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "Daily Study Plan",
-                                    style = MaterialTheme.typography.bodySmall.copy(
-                                        color = MaterialTheme.colorScheme.secondaryTextColor,
-                                        fontWeight = FontWeight.Medium
-                                    )
+                            Text(
+                                text = "Continue Study",
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onBackground
                                 )
-                            }
+                            )
 
                             // Due flashcards count pill
-                            Surface(
-                                shape = RoundedCornerShape(12.dp),
-                                color = AmberGold.copy(alpha = 0.15f),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, AmberGold.copy(alpha = 0.4f)),
-                                modifier = Modifier.testTag("due_flashcards_count_pill")
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                                    verticalAlignment = Alignment.CenterVertically
+                            if (dueFlashcardsCount > 0) {
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = AmberGold.copy(alpha = 0.15f),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, AmberGold.copy(alpha = 0.4f)),
+                                    modifier = Modifier.testTag("due_flashcards_count_pill")
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Style,
-                                        contentDescription = null,
-                                        tint = AmberGold,
-                                        modifier = Modifier.size(14.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(
-                                        text = "$dueFlashcardsCount Due",
-                                        style = MaterialTheme.typography.labelSmall.copy(
-                                            fontWeight = FontWeight.Bold,
-                                            color = AmberGold
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Style,
+                                            contentDescription = null,
+                                            tint = AmberGold,
+                                            modifier = Modifier.size(14.dp)
                                         )
-                                    )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(
+                                            text = "$dueFlashcardsCount Due",
+                                            style = MaterialTheme.typography.labelSmall.copy(
+                                                fontWeight = FontWeight.Bold,
+                                                color = AmberGold
+                                            )
+                                        )
+                                    }
                                 }
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
 
                         // Continue Last Study Details
                         Text(
-                            text = "Continue: $lastStudyTitle",
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                fontWeight = FontWeight.Bold,
+                            text = lastStudyTitle,
+                            style = MaterialTheme.typography.bodyLarge.copy(
+                                fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.onBackground
                             ),
                             maxLines = 2
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Pick up where you left off or tackle your due reviews.",
+                            text = "Pick up where you left off or review due cards.",
                             style = MaterialTheme.typography.bodySmall.copy(
                                 color = MaterialTheme.colorScheme.secondaryTextColor
                             )
@@ -401,7 +381,7 @@ fun DashboardScreen(
 
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        // Start Study Button
+                        // Start Study Button (Primary CTA in Cyan)
                         Button(
                             onClick = {
                                 if (lastStudyUnit != null) {
@@ -410,27 +390,31 @@ fun DashboardScreen(
                                     onStartQuiz(allQuizzes.first())
                                 }
                             },
-                            shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = ElectricBlue),
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = NeonCyan,
+                                contentColor = Color.Black
+                            ),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(46.dp)
+                                .heightIn(min = 48.dp)
                                 .testTag("today_start_button")
                         ) {
                             Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Start Today's Study", fontWeight = FontWeight.Bold)
+                            Text("Resume Unit", fontWeight = FontWeight.Bold)
                         }
 
                         if (openMistakes.isNotEmpty()) {
                             Spacer(modifier = Modifier.height(8.dp))
                             OutlinedButton(
                                 onClick = { showReviewMistakesDialog = true },
-                                shape = RoundedCornerShape(12.dp),
+                                shape = RoundedCornerShape(8.dp),
                                 border = androidx.compose.foundation.BorderStroke(1.dp, CoralRed.copy(alpha = 0.5f)),
                                 colors = ButtonDefaults.outlinedButtonColors(contentColor = CoralRed),
                                 modifier = Modifier
                                     .fillMaxWidth()
+                                    .heightIn(min = 48.dp)
                                     .testTag("review_mistakes_home_button")
                             ) {
                                 Icon(Icons.Default.ErrorOutline, contentDescription = null, modifier = Modifier.size(16.dp), tint = CoralRed)
@@ -442,7 +426,7 @@ fun DashboardScreen(
                 }
             }
 
-            // Recent Quizzes Row (History, Biology, Chemistry)
+            // Recent Quizzes from Room
             item(key = "recent_quizzes_section") {
                 Column(modifier = Modifier.fillMaxWidth()) {
                     Row(
@@ -451,7 +435,7 @@ fun DashboardScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Recent Quizzes",
+                            text = "Recent Activity",
                             style = MaterialTheme.typography.titleMedium.copy(
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onBackground
@@ -462,7 +446,7 @@ fun DashboardScreen(
                             onClick = { selectedSubjectForUnits = subjects.firstOrNull() }
                         ) {
                             Text(
-                                text = "View All",
+                                text = "All Subjects",
                                 style = MaterialTheme.typography.bodySmall.copy(
                                     color = if (LocalThemeIsDark.current) NeonCyan else ElectricBlue,
                                     fontWeight = FontWeight.Bold
@@ -473,34 +457,82 @@ fun DashboardScreen(
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        RecentQuizMiniCard(
-                            title = "History",
-                            scoreText = "85% Avg",
-                            accentColor = AmberGold,
-                            icon = Icons.Default.AccountBalance,
-                            modifier = Modifier.weight(1f),
-                            onClick = { selectedSubjectForUnits = subjects.find { it.id == "history" } }
-                        )
-                        RecentQuizMiniCard(
-                            title = "Biology",
-                            scoreText = "92% Avg",
-                            accentColor = EmeraldGreen,
-                            icon = Icons.Default.Biotech,
-                            modifier = Modifier.weight(1f),
-                            onClick = { selectedSubjectForUnits = subjects.find { it.id == "biology" } }
-                        )
-                        RecentQuizMiniCard(
-                            title = "Chemistry",
-                            scoreText = "Active",
-                            accentColor = if (LocalThemeIsDark.current) NeonCyan else ElectricBlue,
-                            icon = Icons.Default.Science,
-                            modifier = Modifier.weight(1f),
-                            onClick = { selectedSubjectForUnits = subjects.find { it.id == "chemistry" } }
-                        )
+                    if (activities.isEmpty()) {
+                        Card(
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("empty_recent_activity_card")
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Quiz,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.secondaryTextColor,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    text = "No quizzes completed yet. Choose a unit below to take your first test.",
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        color = MaterialTheme.colorScheme.secondaryTextColor
+                                    )
+                                )
+                            }
+                        }
+                    } else {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            activities.take(3).forEach { activity ->
+                                Card(
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = activity.title,
+                                                style = MaterialTheme.typography.bodyMedium.copy(
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = MaterialTheme.colorScheme.onBackground
+                                                )
+                                            )
+                                            Text(
+                                                text = activity.subtitle,
+                                                style = MaterialTheme.typography.bodySmall.copy(
+                                                    color = MaterialTheme.colorScheme.secondaryTextColor
+                                                )
+                                            )
+                                        }
+                                        Surface(
+                                            shape = RoundedCornerShape(8.dp),
+                                            color = MaterialTheme.colorScheme.surfaceVariant
+                                        ) {
+                                            Text(
+                                                text = "${activity.progressPercent}%",
+                                                style = MaterialTheme.typography.labelSmall.copy(
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = if (activity.progressPercent >= 80) EmeraldGreen else AmberGold
+                                                ),
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -544,7 +576,7 @@ fun DashboardScreen(
             // Daily Streak Section
             item(key = "daily_streak_section") {
                 Card(
-                    shape = RoundedCornerShape(20.dp),
+                    shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
                     modifier = Modifier
@@ -570,7 +602,7 @@ fun DashboardScreen(
                             )
 
                             Text(
-                                text = if (userProfile.streakDays > 0) "${userProfile.streakDays}-Day Streak!" else "Start Your Streak!",
+                                text = if (userProfile.streakDays > 0) "${userProfile.streakDays}-Day Streak" else "Start Your Streak",
                                 style = MaterialTheme.typography.labelMedium.copy(
                                     color = AmberGold,
                                     fontWeight = FontWeight.Bold
@@ -578,33 +610,26 @@ fun DashboardScreen(
                             )
                         }
 
-                        Spacer(modifier = Modifier.height(14.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // Circular Streak indicator
+                            // Streak count indicator
                             Box(
                                 modifier = Modifier
-                                    .size(72.dp)
+                                    .size(64.dp)
                                     .clip(CircleShape)
-                                    .background(
-                                        Brush.radialGradient(
-                                            listOf(
-                                                AmberGold.copy(alpha = 0.25f),
-                                                MaterialTheme.colorScheme.surfaceVariant
-                                            )
-                                        )
-                                    )
-                                    .border(2.dp, AmberGold, CircleShape),
+                                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                                    .border(1.dp, AmberGold.copy(alpha = 0.8f), CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                     Text(
                                         text = "${userProfile.streakDays}",
                                         style = MaterialTheme.typography.titleLarge.copy(
-                                            fontWeight = FontWeight.Black,
+                                            fontWeight = FontWeight.Bold,
                                             color = AmberGold
                                         )
                                     )
@@ -651,12 +676,12 @@ fun DashboardScreen(
                         )
                     )
 
-                    Spacer(modifier = Modifier.height(10.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
 
                     Card(
-                        shape = RoundedCornerShape(18.dp),
+                        shape = RoundedCornerShape(16.dp),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, NeonPurple.copy(alpha = 0.4f)),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable(
@@ -680,13 +705,13 @@ fun DashboardScreen(
                                     modifier = Modifier
                                         .size(46.dp)
                                         .clip(RoundedCornerShape(12.dp))
-                                        .background(NeonPurple.copy(alpha = 0.2f)),
+                                        .background(MaterialTheme.colorScheme.surfaceVariant),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Calculate,
                                         contentDescription = "Math icon",
-                                        tint = NeonPurple,
+                                        tint = NeonCyan,
                                         modifier = Modifier.size(24.dp)
                                     )
                                 }
@@ -714,14 +739,14 @@ fun DashboardScreen(
                             IconButton(
                                 onClick = { onStartQuiz(StudyRepository.algebraReviewQuiz) },
                                 modifier = Modifier
-                                    .size(44.dp)
+                                    .size(48.dp)
                                     .clip(CircleShape)
-                                    .background(NeonPurple)
+                                    .background(NeonCyan)
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.PlayArrow,
                                     contentDescription = "Start Algebra Quiz",
-                                    tint = Color.White,
+                                    tint = Color.Black,
                                     modifier = Modifier.size(22.dp)
                                 )
                             }
@@ -763,68 +788,6 @@ fun DashboardScreen(
 }
 
 @Composable
-fun RecentQuizMiniCard(
-    title: String,
-    scoreText: String,
-    accentColor: Color,
-    icon: ImageVector,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit
-) {
-    Surface(
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surface,
-        border = androidx.compose.foundation.BorderStroke(1.dp, accentColor.copy(alpha = 0.35f)),
-        modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
-            .clickable(
-                role = Role.Button,
-                onClickLabel = "Open $title quiz",
-                onClick = onClick
-            )
-    ) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            horizontalAlignment = Alignment.Start
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(accentColor.copy(alpha = 0.15f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = "$title icon",
-                    tint = accentColor,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            Text(
-                text = title,
-                style = MaterialTheme.typography.labelLarge.copy(
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-            )
-
-            Text(
-                text = scoreText,
-                style = MaterialTheme.typography.bodySmall.copy(
-                    color = accentColor,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-            )
-        }
-    }
-}
-
-@Composable
 fun SubjectPillCard(
     subject: SubjectItem,
     modifier: Modifier = Modifier,
@@ -832,11 +795,12 @@ fun SubjectPillCard(
 ) {
     val color = Color(subject.accentColorHex)
     Surface(
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.surface,
-        border = androidx.compose.foundation.BorderStroke(1.dp, color.copy(alpha = 0.3f)),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
         modifier = modifier
-            .clip(RoundedCornerShape(14.dp))
+            .heightIn(min = 48.dp)
+            .clip(RoundedCornerShape(12.dp))
             .clickable(
                 role = Role.Button,
                 onClickLabel = "Select subject ${subject.name}",
@@ -869,7 +833,7 @@ fun SubjectPillCard(
                 Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(14.dp))
             }
 
-            Spacer(modifier = Modifier.width(6.dp))
+            Spacer(modifier = Modifier.width(8.dp))
 
             Text(
                 text = subject.name,

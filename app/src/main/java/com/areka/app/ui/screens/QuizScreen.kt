@@ -729,7 +729,7 @@ fun QuizResultsView(
                         )
                         Spacer(modifier = Modifier.width(10.dp))
                         Text(
-                            text = "Time's up — your quiz was submitted automatically.",
+                            text = "Time is up. Your quiz was submitted automatically.",
                             style = MaterialTheme.typography.bodyMedium.copy(
                                 fontWeight = FontWeight.SemiBold,
                                 color = CoralRed
@@ -869,15 +869,18 @@ fun QuizResultsView(
                 if (onOpenFlashcards != null && quiz.subjectId != null && quiz.unitId != null) {
                     Button(
                         onClick = { onOpenFlashcards(quiz.subjectId, quiz.unitId) },
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = NeonPurple),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = NeonCyan,
+                            contentColor = Color.Black
+                        ),
                         modifier = Modifier
                             .weight(1f)
                             .heightIn(min = 48.dp)
                     ) {
                         Icon(Icons.Default.Style, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Study Cards")
+                        Text("Study Cards", fontWeight = FontWeight.Bold)
                     }
                 } else {
                     Button(

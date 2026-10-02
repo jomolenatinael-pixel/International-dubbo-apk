@@ -41,9 +41,9 @@ fun UnitSelectionDialog(
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
-            shape = RoundedCornerShape(24.dp),
+            shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            border = androidx.compose.foundation.BorderStroke(1.5.dp, accentColor.copy(alpha = 0.5f)),
+            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
             modifier = Modifier
                 .fillMaxWidth()
                 .fillMaxHeight(0.85f)
@@ -249,22 +249,22 @@ fun UnitItemCard(
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 // Flashcards button
                 OutlinedButton(
                     onClick = onStartFlashcards,
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(8.dp),
                     colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = if (LocalThemeIsDark.current) NeonCyan else ElectricBlue
+                        contentColor = NeonCyan
                     ),
                     border = androidx.compose.foundation.BorderStroke(
                         1.dp,
-                        (if (LocalThemeIsDark.current) NeonCyan else ElectricBlue).copy(alpha = 0.6f)
+                        NeonCyan.copy(alpha = 0.6f)
                     ),
                     modifier = Modifier
                         .weight(1f)
-                        .height(42.dp)
+                        .heightIn(min = 48.dp)
                         .testTag("unit_flashcards_btn_${unit.id}")
                 ) {
                     Icon(
@@ -276,17 +276,17 @@ fun UnitItemCard(
                     Text("Flashcards", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 }
 
-                // Quiz button
+                // Quiz button (Primary CTA in Cyan)
                 Button(
                     onClick = onStartQuiz,
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(8.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = accentColor,
-                        contentColor = Color.White
+                        containerColor = NeonCyan,
+                        contentColor = Color.Black
                     ),
                     modifier = Modifier
                         .weight(1f)
-                        .height(42.dp)
+                        .heightIn(min = 48.dp)
                         .testTag("unit_quiz_btn_${unit.id}")
                 ) {
                     Icon(
